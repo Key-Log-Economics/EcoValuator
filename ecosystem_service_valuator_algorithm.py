@@ -119,9 +119,9 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         total = 100.0 / source.featureCount() if source.featureCount() else 0
         features = source.getFeatures()
 
-        print("hello")
-        print("feature count: " + str(source.featureCount()))
-        print_str = "features: "
+        #print("hello")
+        #print("feature count: " + str(source.featureCount()))
+        #print_str = "features: "
 
         for current, feature in enumerate(features):
             # Stop the algorithm if cancel button has been clicked
@@ -130,7 +130,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
             # Add a feature in the sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
-            print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[0])
+            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[0])
 
             # Update the progress bar
             feedback.setProgress(int(current * total))
@@ -141,7 +141,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        return {self.OUTPUT: print_str}
+        return {self.OUTPUT: dest_id}
 
     def name(self):
         """
