@@ -35,6 +35,7 @@ from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFeatureSink)
 
 
@@ -65,12 +66,20 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         with some other properties.
         """
 
+        #input raster
+        self.addParameter(
+            QgsProcessingParameterRasterLayer(
+                self.INPUT,
+                self.tr('Input raster layer')
+            )
+        )
+
         # We add the input vector features source. It can have any kind of
         # geometry.
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.INPUT,
-                self.tr('Input layer'),
+                "input feature",
+                self.tr('Mask layer'),
                 [QgsProcessing.TypeVectorAnyGeometry]
             )
         )
@@ -93,7 +102,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        source = self.parameterAsSource(parameters, self.INPUT, context)
+        source = self.parameterAsSource(parameters, "input feature", context)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
                 context, source.fields(), source.wkbType(), source.sourceCrs())
 
