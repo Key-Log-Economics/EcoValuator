@@ -39,7 +39,10 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFeatureSink,
                        QgsField,
-                       QgsFeature)
+                       QgsFields,
+                       QgsFeature,
+                       QgsExpression,
+                       QgsFeatureRequest)
 
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
@@ -123,9 +126,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         esv_source = self.parameterAsSource(parameters, "input esv csv", context)
 
         #Create list of fields (i.e. column names) for the output CSV
-
         # Start with fields from the raster input csv
-        sink_fields = raster_summary_source.fields()
+        stat_fields = QgsFields()
         # Then append new fields for the min, max, and mean of each unique
         # ecosystem service (i.e. water, recreation, etc)
         unique_eco_services = esv_source.uniqueValues(2)
@@ -133,10 +135,12 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             min_field_str = eco_service.lower() + "_" + "min"
             max_field_str = eco_service.lower() + "_" + "max"
             mean_field_str = eco_service.lower() + "_" + "mean"
-            sink_fields.append(QgsField(min_field_str))
-            sink_fields.append(QgsField(max_field_str))
-            sink_fields.append(QgsField(mean_field_str))
+            stat_fields.append(QgsField(min_field_str))
+            stat_fields.append(QgsField(max_field_str))
+            stat_fields.append(QgsField(mean_field_str))
 
+        sink_fields = raster_summary_source.fields()
+        sink_fields.extend(stat_fields)
         #Create the feature sink, i.e. the place where we're going to start
         # putting our output data. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
@@ -149,7 +153,15 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         total = 100.0 / raster_summary_source.featureCount() if raster_summary_source.featureCount() else 0
         features = raster_summary_source.getFeatures()
 
-        print_str = "features: "
+        def featureSourceAttributeMeanValue(featureSource, attributeIndex):
+            cumulative_sum = 0.00
+            for feature in featureSource.getFeatures():
+                cumulative_sum = cumulative_sum + float(feature.attributes()[attributeIndex])
+            feature_count = featureSource.featureCount()
+            if feature_count != 0:
+                return cumulative_sum / feature_count
+            else:
+                return None
 
         for current, feature in enumerate(features):
             # Stop the algorithm if cancel button has been clicked
@@ -160,15 +172,27 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             new_feature.setAttribute(0, feature.attributes()[0])
             new_feature.setAttribute(1, feature.attributes()[1])
             new_feature.setAttribute(2, feature.attributes()[2])
-            new_feature.setAttribute(3, 1)
+
+            nlcd_code_expr = QgsExpression("nlcd_code = '" + feature.attributes()[0] + "'")
+            nlcd_code_feature_request = QgsFeatureRequest(nlcd_code_expr)
+            nlcd_code_filtered_source = esv_source.materialize(nlcd_code_feature_request)
+
+            for field_index in stat_fields.allAttributesList():
+                es = stat_fields.field(field_index).name().split("_")
+                es_name = es[0]
+                es_stat = es[1]
+                es_expr = QgsExpression("ecosystem_service_name = '" + es_name.title() + "'")
+                es_feature_request = QgsFeatureRequest(es_expr)
+                es_filtered_source = nlcd_code_filtered_source.materialize(es_feature_request)
+                if es_stat == "min":
+                    new_feature.setAttribute(field_index + 3, es_filtered_source.minimumValue(3))
+                elif es_stat == "max":
+                    new_feature.setAttribute(field_index + 3, es_filtered_source.maximumValue(3))
+                elif es_stat == "mean":
+                    new_feature.setAttribute(field_index + 3, featureSourceAttributeMeanValue(es_filtered_source, 3))
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
-            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[0])
-            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[1])
-            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[2])
-            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[3])
-
 
             # Update the progress bar
             feedback.setProgress(int(current * total))
@@ -179,7 +203,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        return {self.OUTPUT: print_str}
+        return {self.OUTPUT: dest_id}
 
     def name(self):
         """
