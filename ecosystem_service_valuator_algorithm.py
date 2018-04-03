@@ -84,6 +84,14 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                "input csv",
+                self.tr('CSV'),
+                [QgsProcessing.TypeFile]
+            )
+        )
+
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
         # algorithm is run in QGIS).
@@ -102,7 +110,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        source = self.parameterAsSource(parameters, "input feature", context)
+        source = self.parameterAsSource(parameters, "input csv", context)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
                 context, source.fields(), source.wkbType(), source.sourceCrs())
 
@@ -111,6 +119,10 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         total = 100.0 / source.featureCount() if source.featureCount() else 0
         features = source.getFeatures()
 
+        print("hello")
+        print("feature count: " + str(source.featureCount()))
+        print_str = "features: "
+
         for current, feature in enumerate(features):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
@@ -118,6 +130,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
             # Add a feature in the sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[0])
 
             # Update the progress bar
             feedback.setProgress(int(current * total))
@@ -128,7 +141,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        return {self.OUTPUT: dest_id}
+        return {self.OUTPUT: print_str}
 
     def name(self):
         """
