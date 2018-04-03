@@ -38,7 +38,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFeatureSink,
-                       QgsField)
+                       QgsField,
+                       QgsFeature)
 
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
@@ -116,18 +117,18 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         Here is where the processing itself takes place.
         """
 
-        # Retrieve the feature source and sink. The 'dest_id' variable is used
-        # to uniquely identify the feature sink, and must be included in the
-        # dictionary returned by the processAlgorithm function.
+        #Create feature sources out of both input CSVs so we can use
+        # their contents
         raster_summary_source = self.parameterAsSource(parameters, "input raster summary csv", context)
         esv_source = self.parameterAsSource(parameters, "input esv csv", context)
 
-        #appen
-        unique_eco_services = esv_source.uniqueValues(2)
-        print(unique_eco_services)
+        #Create list of fields (i.e. column names) for the output CSV
 
+        # Start with fields from the raster input csv
         sink_fields = raster_summary_source.fields()
-
+        # Then append new fields for the min, max, and mean of each unique
+        # ecosystem service (i.e. water, recreation, etc)
+        unique_eco_services = esv_source.uniqueValues(2)
         for eco_service in unique_eco_services:
             min_field_str = eco_service.lower() + "_" + "min"
             max_field_str = eco_service.lower() + "_" + "max"
@@ -136,6 +137,10 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             sink_fields.append(QgsField(max_field_str))
             sink_fields.append(QgsField(mean_field_str))
 
+        #Create the feature sink, i.e. the place where we're going to start
+        # putting our output data. The 'dest_id' variable is used
+        # to uniquely identify the feature sink, and must be included in the
+        # dictionary returned by the processAlgorithm function.
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
                 context, sink_fields, raster_summary_source.wkbType(), raster_summary_source.sourceCrs())
 
@@ -144,18 +149,26 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         total = 100.0 / raster_summary_source.featureCount() if raster_summary_source.featureCount() else 0
         features = raster_summary_source.getFeatures()
 
-        #print("hello")
-        #print("feature count: " + str(source.featureCount()))
-        #print_str = "features: "
+        print_str = "features: "
 
         for current, feature in enumerate(features):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
                 break
 
+            new_feature = QgsFeature(sink_fields)
+            new_feature.setAttribute(0, feature.attributes()[0])
+            new_feature.setAttribute(1, feature.attributes()[1])
+            new_feature.setAttribute(2, feature.attributes()[2])
+            new_feature.setAttribute(3, 1)
+
             # Add a feature in the sink
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
             #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[0])
+            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[1])
+            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[2])
+            #print_str = print_str + ", " + str(current) + ": " + str(feature.attributes()[3])
+
 
             # Update the progress bar
             feedback.setProgress(int(current * total))
@@ -166,7 +179,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        return {self.OUTPUT: dest_id}
+        return {self.OUTPUT: print_str}
 
     def name(self):
         """
