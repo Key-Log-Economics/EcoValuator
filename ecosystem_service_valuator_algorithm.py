@@ -30,13 +30,15 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 
 __revision__ = '$Format:%H$'
 
+import numpy as np
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterFeatureSink)
+                       QgsProcessingParameterFeatureSink,
+                       QgsField)
 
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
@@ -86,12 +88,19 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                "input csv",
-                self.tr('CSV'),
+                "input raster summary csv",
+                self.tr('Raster Summary CSV'),
                 [QgsProcessing.TypeFile]
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                "input esv csv",
+                self.tr('Ecosystem Service Values CSV'),
+                [QgsProcessing.TypeFile]
+            )
+        )
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
         # algorithm is run in QGIS).
@@ -110,14 +119,30 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        source = self.parameterAsSource(parameters, "input csv", context)
+        raster_summary_source = self.parameterAsSource(parameters, "input raster summary csv", context)
+        esv_source = self.parameterAsSource(parameters, "input esv csv", context)
+
+        #appen
+        unique_eco_services = esv_source.uniqueValues(2)
+        print(unique_eco_services)
+
+        sink_fields = raster_summary_source.fields()
+
+        for eco_service in unique_eco_services:
+            min_field_str = eco_service.lower() + "_" + "min"
+            max_field_str = eco_service.lower() + "_" + "max"
+            mean_field_str = eco_service.lower() + "_" + "mean"
+            sink_fields.append(QgsField(min_field_str))
+            sink_fields.append(QgsField(max_field_str))
+            sink_fields.append(QgsField(mean_field_str))
+
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
-                context, source.fields(), source.wkbType(), source.sourceCrs())
+                context, sink_fields, raster_summary_source.wkbType(), raster_summary_source.sourceCrs())
 
         # Compute the number of steps to display within the progress bar and
         # get features from source
-        total = 100.0 / source.featureCount() if source.featureCount() else 0
-        features = source.getFeatures()
+        total = 100.0 / raster_summary_source.featureCount() if raster_summary_source.featureCount() else 0
+        features = raster_summary_source.getFeatures()
 
         #print("hello")
         #print("feature count: " + str(source.featureCount()))
