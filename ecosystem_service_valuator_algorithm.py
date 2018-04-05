@@ -110,13 +110,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        #self.addParameter(
-        #    QgsVectorLayer(
-        #        "polygon",
-        #        "vector layer1",
-        #        "memory")
-        #)
-
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
         # algorithm is run in QGIS).
@@ -136,7 +129,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # their contents
         raster_summary_source = self.parameterAsSource(parameters, "input raster summary csv", context)
         esv_source = self.parameterAsSource(parameters, "input esv csv", context)
-        #vector_layer1 = self.parameterAsVectorLayer(parameters, "vector layer1", context)
 
         #Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
@@ -164,64 +156,47 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Compute the number of steps to display within the progress bar and
         # get features from source
         total = 100.0 / raster_summary_source.featureCount() if raster_summary_source.featureCount() else 0
-        features = raster_summary_source.getFeatures()
 
-        def vectorLayerAttributeMeanValue(vectorLayer, attributeIndex):
-            uri3 = "polygon"
-            vector_layer3 = QgsVectorLayer(uri3, "vector layer", "memory")
-            vector_layer3 = vectorLayer
-            cumulative_sum = 0.00
-            for feature in vector_layer3.getFeatures():
-                cumulative_sum = cumulative_sum + float(feature.attributes()[attributeIndex])
-            feature_count = vector_layer3.featureCount()
-            if feature_count != 0:
-                return cumulative_sum / feature_count
-            else:
-                return None
+        raster_summary_features = raster_summary_source.getFeatures()
 
-        #uri = "polygon"
-        #vector_layer1 = QgsVectorLayer(uri, "vector layer1", "memory")
-        #uri2 = "polygon"
-        #vector_layer2 = QgsVectorLayer(uri2, "vector layer2", "memory")
-        #join_info = QgsVectorLayerJoinInfo()
-        #join_info.setJoinLayer(empyt_vector_layer)
-        #print("id: " + join_info.joinLayerId())
-        #print("joinFieldName: " + join_info.joinFieldName())
-
-        for current, feature in enumerate(features):
+        for raster_summary_current, raster_summary_feature in enumerate(raster_summary_features):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
                 break
 
             new_feature = QgsFeature(sink_fields)
-            new_feature.setAttribute(0, feature.attributes()[0])
-            new_feature.setAttribute(1, feature.attributes()[1])
-            new_feature.setAttribute(2, feature.attributes()[2])
-
-            #nlcd_code_expr = QgsExpression("nlcd_code = '" + feature.attributes()[0] + "'")
-            #nlcd_code_feature_request = QgsFeatureRequest(nlcd_code_expr)
-            #vector_layer1 = esv_source.materialize(nlcd_code_feature_request)
+            new_feature.setAttribute(0, raster_summary_feature.attributes()[0])
+            new_feature.setAttribute(1, raster_summary_feature.attributes()[1])
+            new_feature.setAttribute(2, raster_summary_feature.attributes()[2])
 
             for field_index in stat_fields.allAttributesList():
                 es = stat_fields.field(field_index).name().split("_")
-                es_name = es[0]
+                es_name = es[0].title()
                 es_stat = es[1]
-                expr = QgsExpression("nlcd_code = '" + feature.attributes()[0] + "' AND ecosystem_service_name = '" + es_name.title() + "'")
-                feature_request = QgsFeatureRequest(expr)
-                vector_layer1 = esv_source.materialize(feature_request)
-                #max = esv_source.materialize(feature_request).maximumValue(3)
-                if es_stat == "min":
-                    new_feature.setAttribute(field_index + 3, vector_layer1.minimumValue(3))
-                elif es_stat == "max":
-                    new_feature.setAttribute(field_index + 3, vector_layer1.maximumValue(3))
-                #elif es_stat == "mean":
-                    #new_feature.setAttribute(field_index + 3, vectorLayerAttributeMeanValue(vector_layer2, 3))
+
+                values_list = []
+                esv_features = esv_source.getFeatures()
+
+                for esv_feature in esv_features:
+                    if esv_feature.attributes()[0] == raster_summary_feature.attributes()[0]:
+                        if esv_feature.attributes()[2] == es_name:
+                            values_list.append(float(esv_feature.attributes()[3]))
+
+                values_array = np.asarray(values_list)
+
+                if values_array.shape[0] > 0:
+                    if es_stat == "min":
+                        new_feature.setAttribute(field_index + 3, float(np.amin(values_array)))
+                    elif es_stat == "max":
+                        new_feature.setAttribute(field_index + 3, float(np.amax(values_array)))
+                    elif es_stat == "mean":
+                        new_feature.setAttribute(field_index + 3, float(np.mean(values_array)))
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
             # Update the progress bar
-            feedback.setProgress(int(current * total))
+            feedback.setProgress(int(raster_summary_current * total))
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
