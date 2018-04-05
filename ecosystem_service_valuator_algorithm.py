@@ -164,10 +164,14 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 break
 
+            nlcd_code = raster_summary_feature.attributes()[0]
+            pixel_count = raster_summary_feature.attributes()[1]
+            area = raster_summary_feature.attributes()[2]
+
             new_feature = QgsFeature(sink_fields)
-            new_feature.setAttribute(0, raster_summary_feature.attributes()[0])
-            new_feature.setAttribute(1, raster_summary_feature.attributes()[1])
-            new_feature.setAttribute(2, raster_summary_feature.attributes()[2])
+            new_feature.setAttribute(0, nlcd_code)
+            new_feature.setAttribute(1, pixel_count)
+            new_feature.setAttribute(2, area)
 
             for field_index in stat_fields.allAttributesList():
                 es = stat_fields.field(field_index).name().split("_")
@@ -178,7 +182,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                 esv_features = esv_source.getFeatures()
 
                 for esv_feature in esv_features:
-                    if esv_feature.attributes()[0] == raster_summary_feature.attributes()[0]:
+                    if esv_feature.attributes()[0] == nlcd_code:
                         if esv_feature.attributes()[2] == es_name:
                             values_list.append(float(esv_feature.attributes()[3]))
 
@@ -186,11 +190,11 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
                 if values_array.shape[0] > 0:
                     if es_stat == "min":
-                        new_feature.setAttribute(field_index + 3, float(np.amin(values_array)))
+                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.amin(values_array)))
                     elif es_stat == "max":
-                        new_feature.setAttribute(field_index + 3, float(np.amax(values_array)))
+                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.amax(values_array)))
                     elif es_stat == "mean":
-                        new_feature.setAttribute(field_index + 3, float(np.mean(values_array)))
+                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.mean(values_array)))
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
