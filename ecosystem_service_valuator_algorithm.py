@@ -109,6 +109,14 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                 [QgsProcessing.TypeFile]
             )
         )
+
+        #self.addParameter(
+        #    QgsVectorLayer(
+        #        "polygon",
+        #        "vector layer1",
+        #        "memory")
+        #)
+
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
         # algorithm is run in QGIS).
@@ -128,6 +136,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # their contents
         raster_summary_source = self.parameterAsSource(parameters, "input raster summary csv", context)
         esv_source = self.parameterAsSource(parameters, "input esv csv", context)
+        #vector_layer1 = self.parameterAsVectorLayer(parameters, "vector layer1", context)
 
         #Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
@@ -172,8 +181,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         #uri = "polygon"
         #vector_layer1 = QgsVectorLayer(uri, "vector layer1", "memory")
-        uri2 = "polygon"
-        vector_layer2 = QgsVectorLayer(uri2, "vector layer2", "memory")
+        #uri2 = "polygon"
+        #vector_layer2 = QgsVectorLayer(uri2, "vector layer2", "memory")
         #join_info = QgsVectorLayerJoinInfo()
         #join_info.setJoinLayer(empyt_vector_layer)
         #print("id: " + join_info.joinLayerId())
@@ -199,11 +208,12 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                 es_stat = es[1]
                 expr = QgsExpression("nlcd_code = '" + feature.attributes()[0] + "' AND ecosystem_service_name = '" + es_name.title() + "'")
                 feature_request = QgsFeatureRequest(expr)
-                vector_layer2 = esv_source.materialize(feature_request)
+                vector_layer1 = esv_source.materialize(feature_request)
+                #max = esv_source.materialize(feature_request).maximumValue(3)
                 if es_stat == "min":
-                    new_feature.setAttribute(field_index + 3, vector_layer2.minimumValue(3))
+                    new_feature.setAttribute(field_index + 3, vector_layer1.minimumValue(3))
                 elif es_stat == "max":
-                    new_feature.setAttribute(field_index + 3, vector_layer2.maximumValue(3))
+                    new_feature.setAttribute(field_index + 3, vector_layer1.maximumValue(3))
                 #elif es_stat == "mean":
                     #new_feature.setAttribute(field_index + 3, vectorLayerAttributeMeanValue(vector_layer2, 3))
 
