@@ -144,6 +144,10 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             stat_fields.append(QgsField(max_field_str))
             stat_fields.append(QgsField(mean_field_str))
 
+        stat_fields.append(QgsField("total_min"))
+        stat_fields.append(QgsField("total_max"))
+        stat_fields.append(QgsField("total_mean"))
+
         sink_fields = raster_summary_source.fields()
         sink_fields.extend(stat_fields)
         #Create the feature sink, i.e. the place where we're going to start
@@ -173,28 +177,46 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             new_feature.setAttribute(1, pixel_count)
             new_feature.setAttribute(2, area)
 
+            total_min = 0
+            total_max = 0
+            total_mean = 0
+
             for field_index in stat_fields.allAttributesList():
                 es = stat_fields.field(field_index).name().split("_")
                 es_name = es[0].title()
                 es_stat = es[1]
 
-                values_list = []
-                esv_features = esv_source.getFeatures()
+                if es_name != "Total":
+                    values_list = []
+                    esv_features = esv_source.getFeatures()
 
-                for esv_feature in esv_features:
-                    if esv_feature.attributes()[0] == nlcd_code:
-                        if esv_feature.attributes()[2] == es_name:
-                            values_list.append(float(esv_feature.attributes()[3]))
+                    for esv_feature in esv_features:
+                        if esv_feature.attributes()[0] == nlcd_code:
+                            if esv_feature.attributes()[2] == es_name:
+                                values_list.append(float(esv_feature.attributes()[3]))
 
-                values_array = np.asarray(values_list)
+                    values_array = np.asarray(values_list)
 
-                if values_array.shape[0] > 0:
+                    if values_array.shape[0] > 0:
+                        if es_stat == "min":
+                            nlcd_min = float(pixel_count) * 0.09 * float(np.amin(values_array))
+                            total_min = total_min + nlcd_min
+                            new_feature.setAttribute(field_index + 3, nlcd_min)
+                        elif es_stat == "max":
+                            nlcd_max = float(pixel_count) * 0.09 * float(np.amax(values_array))
+                            total_max = total_max + nlcd_max
+                            new_feature.setAttribute(field_index + 3, nlcd_max)
+                        elif es_stat == "mean":
+                            nlcd_mean = float(pixel_count) * 0.09 * float(np.mean(values_array))
+                            total_mean = total_mean + nlcd_mean
+                            new_feature.setAttribute(field_index + 3, nlcd_mean)
+                elif es_name == "Total":
                     if es_stat == "min":
-                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.amin(values_array)))
-                    elif es_stat == "max":
-                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.amax(values_array)))
-                    elif es_stat == "mean":
-                        new_feature.setAttribute(field_index + 3, float(pixel_count) * 0.09 * float(np.mean(values_array)))
+                        new_feature.setAttribute(field_index + 3, total_min)
+                    if es_stat == "max":
+                        new_feature.setAttribute(field_index + 3, total_max)
+                    if es_stat == "mean":
+                        new_feature.setAttribute(field_index + 3, total_mean)
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
