@@ -46,7 +46,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingFeatureSource,
                        QgsFeatureSource,
                        QgsVectorLayer,
-                       QgsVectorLayerJoinInfo)
+                       QgsVectorLayerJoinInfo,
+                       QgsProcessingParameterRasterDestination)
 
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
@@ -110,13 +111,19 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        # We add a feature sink in which to store our processed features (this
-        # usually takes the form of a newly created vector layer when the
-        # algorithm is run in QGIS).
+        # Add a feature sink for the output data table
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                self.tr('Output layer')
+                self.tr('Output data table layer')
+            )
+        )
+
+        # Add a parameter for the output raster layer
+        self.addParameter(
+            QgsProcessingParameterRasterDestination(
+                "output raster layer",
+                self.tr('Output raster layer')
             )
         )
 
@@ -124,6 +131,22 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
+        print_str = ''
+
+        input_raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        input_raster_layer_data_provider = input_raster_layer.dataProvider()
+        input_raster_layer_extent = input_raster_layer.extent()
+        input_raster_layer_width = input_raster_layer.width()
+        input_raster_layer_height = input_raster_layer.height()
+        input_raster_layer_block = input_raster_layer_data_provider.block(1, input_raster_layer_extent, input_raster_layer_width, input_raster_layer_height)
+        input_raster_layer_data_qbytearray = input_raster_layer_block.data()
+        input_raster_layer_data_length = input_raster_layer_data_qbytearray.length()
+        print_str = print_str + "raster data length: " + str(input_raster_layer_data_length)
+        #input_raster_layer_data_str = input_raster_layer_data_qbytearray.left(200).data().decode('utf16')
+            # output was \x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿
+            #utf8 and utf16 didn't work
+
+        raster_output = self.parameterAsOutputLayer(parameters, "output raster layer", context)
 
         #Create feature sources out of both input CSVs so we can use
         # their contents
@@ -150,7 +173,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         sink_fields = raster_summary_source.fields()
         sink_fields.extend(stat_fields)
-        #Create the feature sink, i.e. the place where we're going to start
+
+        # Create the feature sink for the output data table, i.e. the place where we're going to start
         # putting our output data. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
@@ -230,7 +254,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        return {self.OUTPUT: dest_id}
+        return {self.OUTPUT: print_str}
 
     def name(self):
         """
