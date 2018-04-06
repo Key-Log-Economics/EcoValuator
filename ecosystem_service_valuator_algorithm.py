@@ -47,7 +47,7 @@ from qgis.core import (QgsProcessing,
                        QgsFeatureSource,
                        QgsVectorLayer,
                        QgsVectorLayerJoinInfo,
-                       QgsProcessingParameterRasterDestination)
+                       QgsProcessingParameterRasterDestination, QgsProject)
 
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
@@ -134,6 +134,26 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         print_str = ''
 
         input_raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        #print_str = print_str + "project instance filename: " + QgsProject.instance().fileName() #correctly prints out filepath/name
+        map_layers = QgsProject.instance().mapLayers()
+        for map_layer in map_layers:
+            print_str = print_str + map_layer + ", "
+
+        #QgsProject.instance().addMapLayer(input_raster_layer)
+        if input_raster_layer.isValid():
+            print_str = print_str + "is valid"
+            QgsProject.instance().addMapLayer(input_raster_layer)
+            #self.update_current_wms_layers()
+        else:
+            self.show_message('Failed to create layer.')
+
+        print_str = print_str + " ----------------------------------- after ------------------------------------------"
+        map_layers = QgsProject.instance().mapLayers()
+        for map_layer in map_layers:
+            print_str = print_str + map_layer + ", "
+
+
+        '''
         input_raster_layer_data_provider = input_raster_layer.dataProvider()
         input_raster_layer_extent = input_raster_layer.extent()
         input_raster_layer_width = input_raster_layer.width()
@@ -145,8 +165,9 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         #input_raster_layer_data_str = input_raster_layer_data_qbytearray.left(200).data().decode('utf16')
             # output was \x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿\x00䍿
             #utf8 and utf16 didn't work
+        '''
 
-        raster_output = self.parameterAsOutputLayer(parameters, "output raster layer", context)
+        #raster_output = self.parameterAsOutputLayer(parameters, "output raster layer", context)
 
         #Create feature sources out of both input CSVs so we can use
         # their contents
