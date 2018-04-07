@@ -14,13 +14,10 @@ __date__      = '2018-03-05'
 __copyright__ = '(C) 2018 by Roman Geisthövel'
 
 import os
-import ctypes as ct
-from ctypes.util import find_library
 
 __all__ = """
-    App
     Common
-    FFI
+    App
     Raster
 """.split()
 
@@ -55,76 +52,6 @@ class Common:
                 return x
         else:
             return 0
-
-
-class FFI:
-    "C function interface utilities"
-
-    _type_map = {}
-
-    @staticmethod
-    def load(name):
-        try:
-            if not os.path.isfile(name):
-                name = find_library(name)
-            if name:
-                dll = ct.windll if os.name == "nt" else ct.cdll
-                return dll.LoadLibrary(name)
-        except OSError:
-            pass
-        return None
-
-    @staticmethod
-    def c_t(type_name):
-        if not FFI._type_map:
-            m = FFI._type_map
-
-            # Integer types
-            for aliases in ("char", "int i", "short", "long l", "longlong ll",
-                            "bool ?", "float f", "double d", "longdouble ld"):
-                aliases = aliases.split()
-                T = aliases[0]
-                for _ in aliases:
-                    m[_]          = getattr(ct, "c_%s" % T)
-                    if T == "char":
-                        # ctypes has no c_uchar
-                        m["uchar"] = ct.c_ubyte
-                    elif T in "char int short long longlong":
-                        # unsigned T
-                        m["u%s" % _]  = getattr(ct, "c_u%s" % T)
-
-                    # Pointer to T
-                    m["%s*" % _]  = ct.POINTER(m[T])
-
-                    if T not in "bool float double longdouble":
-                        # Pointer to unsigned T
-                        m["u%s*" % _] = ct.POINTER(m["u%s" % T])
-
-            # Exact size integer (pointer) types
-            for n in (1,2,4,8):
-                s = "i%i" % n
-                u = "u%i" % n
-                m[s] = getattr(ct, "c_int%i" % (n*8))
-                m[u] = getattr(ct, "c_uint%i" % (n*8))
-                m["%s*" % s] = ct.POINTER(m[s])
-                m["%s*" % u] = ct.POINTER(m[u])
-
-            # Void pointer
-            m["void*"] = m["*"] = ct.c_void_p
-
-        return FFI._type_map[type_name]
-
-    @staticmethod
-    def array_t(T, size):
-        return T * size
-
-    @staticmethod
-    def func_t(res_type, *arg_types):
-        return ct.CFUNCTYPE(res_type, *arg_types)
-
-    @staticmethod
-    def sizeof(obj):
-        return ct.sizeof(obj)
 
 
 if running_qgis():

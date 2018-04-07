@@ -30,6 +30,7 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 import numpy as np
+from numpy import copy
 
 from os.path import splitext
 
@@ -47,7 +48,7 @@ from qgis.core import (QgsProcessing,
                        QgsRasterFileWriter
                        )
 
-import ecosystemservicevaluator.appinter as appi
+import appinter
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
@@ -119,11 +120,10 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        Raster = appi.Raster
-        App = appi.App
+        Raster = appinter.Raster
+        App = appinter.App
 
         log = feedback.setProgressText
-        log('hey')
 
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster }
@@ -135,7 +135,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             return result
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        input_vector = self.parameterAsRasterLayer(parameters, self.INPUT_VECTOR, context)
 
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
@@ -175,6 +174,9 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         raster_summary_features = raster_summary_source.getFeatures()
 
+        raster_value_mapping_dict = {}
+        area_units_conversion_factor = 1
+
         # Calculate mins, maxs, and means for each unique combo of NLCD code and
         # ecosystem service and append values to output table
         for raster_summary_current, raster_summary_feature in enumerate(raster_summary_features):
@@ -213,15 +215,15 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
                     if values_array.shape[0] > 0:
                         if es_stat == "min":
-                            nlcd_min = float(pixel_count) * 0.09 * float(np.amin(values_array))
+                            nlcd_min = float(pixel_count) * area_units_conversion_factor * float(np.amin(values_array))
                             total_min = total_min + nlcd_min
                             new_feature.setAttribute(field_index + 3, nlcd_min)
                         elif es_stat == "max":
-                            nlcd_max = float(pixel_count) * 0.09 * float(np.amax(values_array))
+                            nlcd_max = float(pixel_count) * area_units_conversion_factor * float(np.amax(values_array))
                             total_max = total_max + nlcd_max
                             new_feature.setAttribute(field_index + 3, nlcd_max)
                         elif es_stat == "mean":
-                            nlcd_mean = float(pixel_count) * 0.09 * float(np.mean(values_array))
+                            nlcd_mean = float(pixel_count) * area_units_conversion_factor * float(np.mean(values_array))
                             total_mean = total_mean + nlcd_mean
                             new_feature.setAttribute(field_index + 3, nlcd_mean)
                 elif es_name == "Total":
@@ -231,19 +233,36 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                         new_feature.setAttribute(field_index + 3, total_max)
                     if es_stat == "mean":
                         new_feature.setAttribute(field_index + 3, total_mean)
+                        mean_dict = {nlcd_code: total_mean/float(pixel_count)}
+                        raster_value_mapping_dict.update(mean_dict)
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
             # Update the progress bar
-            #feedback.setProgress(int(raster_summary_current * total))
+            feedback.setProgress(int(raster_summary_current * total))
 
         # Output raster
         log(self.tr("Reading input raster into numpy array ..."))
         grid = Raster.to_numpy(input_raster, band=1)
+        #log(str(type(grid)))               #<class 'numpy.ndarray'>
+        #log(str(grid.dtype))               #float32
+        #log(str(grid.shape))               #(2860, 3642)
+        #log(str(grid[0]))                  #[255. 255. 255. ... 255. 255. 255.]
+        #unique_values = np.unique(grid)
+        #log(str(unique_values))            #[ 11.  21.  22.  23.  24.  31.  41.  42.  43.  52.  71.  81.  82.  90. 95. 255.]
+        int_grid = grid.astype('int')
+        str_grid = int_grid.astype('str')
+        #unique_str_values = np.unique(str_grid)
+        #log(str(unique_str_values))
+
+        #log(str(raster_value_mapping_dict))
+        output_array = self.mapValues(str_grid, raster_value_mapping_dict)
+        #output_unique_values = np.unique(output_array)
+        #log(str(output_unique_values))
 
         log(self.tr("Saving output raster ..."))
-        Raster.numpy_to_file(grid, output_raster, src=str(input_raster.source()))
+        Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
 
         log(self.tr("Done!\n"))
 
@@ -255,6 +274,12 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # or output names.
         #return {self.OUTPUT: dest_id}
         return result
+
+    def mapValues(self, numpy_array, dictionary):
+        output_array = copy(numpy_array)
+        for key, value in dictionary.items():
+            output_array[numpy_array==key] = value
+        return output_array
 
     def name(self):
         """
