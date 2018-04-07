@@ -9,7 +9,6 @@
                               -------------------
         begin                : 2018-04-02
         copyright            : (C) 2018 by Phil Ribbens/Key-Log Economics
-        email                : philip.ribbens@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -31,6 +30,9 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 import numpy as np
+
+from os.path import splitext
+
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
@@ -41,48 +43,32 @@ from qgis.core import (QgsProcessing,
                        QgsField,
                        QgsFields,
                        QgsFeature,
-                       QgsExpression,
-                       QgsFeatureRequest,
-                       QgsProcessingFeatureSource,
-                       QgsFeatureSource,
-                       QgsVectorLayer,
-                       QgsVectorLayerJoinInfo,
                        QgsProcessingParameterRasterDestination,
-                       QgsProject,
-                       QgsCoordinateReferenceSystem)
+                       QgsRasterFileWriter
+                       )
 
+import ecosystemservicevaluator.appinter as appi
 
 class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
-    """
-    This is an example algorithm that takes a vector layer and
-    creates a new identical one.
-
-    It is meant to be used as an example of how to create your own
-    algorithms and explain methods and variables used to do it. An
-    algorithm like this will be available in all elements, and there
-    is not need for additional work.
-
-    All Processing algorithms should extend the QgsProcessingAlgorithm
-    class.
-    """
-
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
-
-    OUTPUT = 'OUTPUT'
-    INPUT = 'INPUT'
+    INPUT_RASTER = 'INPUT_RASTER'
+    INPUT_VECTOR = 'INPUT_VECTOR'
+    INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
+    INPUT_ESV = 'INPUT_ESV'
+    OUTPUT_TABLE = 'OUTPUT_TABLE'
+    OUTPUT_RASTER = 'OUTPUT_RASTER'
 
     def initAlgorithm(self, config):
         """
-        Here we define the inputs and output of the algorithm, along
-        with some other properties.
+        Here we define the inputs and output of the algorithm
         """
 
         # Input raster
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.INPUT,
+                self.INPUT_RASTER,
                 self.tr('Input raster layer')
             )
         )
@@ -90,7 +76,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Input vector to be mask for raster
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                "input feature",
+                self.INPUT_VECTOR,
                 self.tr('Mask layer'),
                 [QgsProcessing.TypeVectorAnyGeometry]
             )
@@ -98,7 +84,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                "input raster summary csv",
+                self.INPUT_RASTER_SUMMARY,
                 self.tr('Raster Summary CSV'),
                 [QgsProcessing.TypeFile]
             )
@@ -106,7 +92,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                "input esv csv",
+                self.INPUT_ESV,
                 self.tr('Ecosystem Service Values CSV'),
                 [QgsProcessing.TypeFile]
             )
@@ -115,7 +101,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Add a feature sink for the output data table
         self.addParameter(
             QgsProcessingParameterFeatureSink(
-                self.OUTPUT,
+                self.OUTPUT_TABLE,
                 self.tr('Output data table layer')
             )
         )
@@ -123,7 +109,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # Add a parameter for the output raster layer
         self.addParameter(
             QgsProcessingParameterRasterDestination(
-                "output raster layer",
+                self.OUTPUT_RASTER,
                 self.tr('Output raster layer'),
                 ".tif"
             )
@@ -133,19 +119,29 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
+        Raster = appi.Raster
+        App = appi.App
+
         log = feedback.setProgressText
         log('hey')
 
-        input_raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
-        out_raster = self.parameterAsOutputLayer(parameters, "output raster layer", context)
-        res = { "output raster layer" : out_raster }
+        output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        result = { self.OUTPUT_RASTER : output_raster }
 
-        #Create feature sources out of both input CSVs so we can use
-        # their contents
-        raster_summary_source = self.parameterAsSource(parameters, "input raster summary csv", context)
-        esv_source = self.parameterAsSource(parameters, "input esv csv", context)
+        # Check output format
+        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster)[1])
+        if not output_format or output_format.lower() != "gtiff":
+            log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
+            return result
 
-        #Create list of fields (i.e. column names) for the output CSV
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        input_vector = self.parameterAsRasterLayer(parameters, self.INPUT_VECTOR, context)
+
+        #Create feature sources out of both input CSVs so we can use their contents
+        raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
+        esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
+
+        # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
         stat_fields = QgsFields()
         # Then append new fields for the min, max, and mean of each unique
@@ -158,7 +154,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             stat_fields.append(QgsField(min_field_str))
             stat_fields.append(QgsField(max_field_str))
             stat_fields.append(QgsField(mean_field_str))
-
+        # Then append three more columns for the totals
         stat_fields.append(QgsField("total_min"))
         stat_fields.append(QgsField("total_max"))
         stat_fields.append(QgsField("total_mean"))
@@ -170,7 +166,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # putting our output data. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
+        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
                 context, sink_fields, raster_summary_source.wkbType(), raster_summary_source.sourceCrs())
 
         # Compute the number of steps to display within the progress bar and
@@ -179,6 +175,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         raster_summary_features = raster_summary_source.getFeatures()
 
+        # Calculate mins, maxs, and means for each unique combo of NLCD code and
+        # ecosystem service and append values to output table
         for raster_summary_current, raster_summary_feature in enumerate(raster_summary_features):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
@@ -238,7 +236,16 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
             # Update the progress bar
-            feedback.setProgress(int(raster_summary_current * total))
+            #feedback.setProgress(int(raster_summary_current * total))
+
+        # Output raster
+        log(self.tr("Reading input raster into numpy array ..."))
+        grid = Raster.to_numpy(input_raster, band=1)
+
+        log(self.tr("Saving output raster ..."))
+        Raster.numpy_to_file(grid, output_raster, src=str(input_raster.source()))
+
+        log(self.tr("Done!\n"))
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
@@ -247,7 +254,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
         #return {self.OUTPUT: dest_id}
-        return res
+        return result
 
     def name(self):
         """

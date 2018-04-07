@@ -12,7 +12,6 @@ qgisMinimumVersion=3.0
 description=Calculate ecosystem service values for a given area
 version=0.1
 author=Phil Ribbens/Key-Log Economics
-email=philip.ribbens@gmail.com
 
 about=This plugin calculates ecosystem service values for a given area.
 
