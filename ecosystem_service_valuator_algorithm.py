@@ -233,7 +233,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                         new_feature.setAttribute(field_index + 3, total_max)
                     if es_stat == "mean":
                         new_feature.setAttribute(field_index + 3, total_mean)
-                        mean_dict = {nlcd_code: total_mean/float(pixel_count)}
+                        mean_dict = {int(nlcd_code): total_mean/float(pixel_count)}
                         raster_value_mapping_dict.update(mean_dict)
 
             # Add a feature in the sink
@@ -244,23 +244,19 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         # Output raster
         log(self.tr("Reading input raster into numpy array ..."))
-        grid = Raster.to_numpy(input_raster, band=1)
+        grid = Raster.to_numpy(input_raster, band=1, dtype=int)
         #log(str(type(grid)))               #<class 'numpy.ndarray'>
         #log(str(grid.dtype))               #float32
         #log(str(grid.shape))               #(2860, 3642)
         #log(str(grid[0]))                  #[255. 255. 255. ... 255. 255. 255.]
         #unique_values = np.unique(grid)
         #log(str(unique_values))            #[ 11.  21.  22.  23.  24.  31.  41.  42.  43.  52.  71.  81.  82.  90. 95. 255.]
-        int_grid = grid.astype('int')
-        str_grid = int_grid.astype('str')
-        #unique_str_values = np.unique(str_grid)
-        #log(str(unique_str_values))
-
-        #log(str(raster_value_mapping_dict))
-        output_array = self.mapValues(str_grid, raster_value_mapping_dict)
+        log(self.tr("Array read"))
+        log(self.tr("Mapping values"))
+        output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
         #output_unique_values = np.unique(output_array)
         #log(str(output_unique_values))
-
+        log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
         Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
 
