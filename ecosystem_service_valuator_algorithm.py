@@ -75,13 +75,13 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         )
 
         # Input vector to be mask for raster
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT_VECTOR,
-                self.tr('Mask layer'),
-                [QgsProcessing.TypeVectorAnyGeometry]
-            )
-        )
+        #self.addParameter(
+        #    QgsProcessingParameterFeatureSource(
+        #        self.INPUT_VECTOR,
+        #        self.tr('Mask layer'),
+        #        [QgsProcessing.TypeVectorAnyGeometry]
+        #    )
+        #)
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
@@ -148,15 +148,15 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         unique_eco_services = esv_source.uniqueValues(2)
         for eco_service in unique_eco_services:
             min_field_str = eco_service.lower() + "_" + "min"
-            max_field_str = eco_service.lower() + "_" + "max"
             mean_field_str = eco_service.lower() + "_" + "mean"
+            max_field_str = eco_service.lower() + "_" + "max"
             stat_fields.append(QgsField(min_field_str))
-            stat_fields.append(QgsField(max_field_str))
             stat_fields.append(QgsField(mean_field_str))
+            stat_fields.append(QgsField(max_field_str))
         # Then append three more columns for the totals
         stat_fields.append(QgsField("total_min"))
-        stat_fields.append(QgsField("total_max"))
         stat_fields.append(QgsField("total_mean"))
+        stat_fields.append(QgsField("total_max"))
 
         sink_fields = raster_summary_source.fields()
         sink_fields.extend(stat_fields)
@@ -175,7 +175,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         raster_summary_features = raster_summary_source.getFeatures()
 
         raster_value_mapping_dict = {}
-        area_units_conversion_factor = 1
+        area_units_conversion_factor = 0.0001
 
         # Calculate mins, maxs, and means for each unique combo of NLCD code and
         # ecosystem service and append values to output table
@@ -194,47 +194,48 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             new_feature.setAttribute(2, area)
 
             total_min = 0
-            total_max = 0
             total_mean = 0
+            total_max = 0
+
 
             for field_index in stat_fields.allAttributesList():
                 es = stat_fields.field(field_index).name().split("_")
-                es_name = es[0].title()
+                es_name = es[0].lower()
                 es_stat = es[1]
 
-                if es_name != "Total":
+                if es_name != "total":
                     values_list = []
                     esv_features = esv_source.getFeatures()
 
                     for esv_feature in esv_features:
                         if esv_feature.attributes()[0] == nlcd_code:
-                            if esv_feature.attributes()[2] == es_name:
+                            if esv_feature.attributes()[2].lower() == es_name:
                                 values_list.append(float(esv_feature.attributes()[3]))
 
                     values_array = np.asarray(values_list)
 
                     if values_array.shape[0] > 0:
                         if es_stat == "min":
-                            nlcd_min = float(pixel_count) * area_units_conversion_factor * float(np.amin(values_array))
+                            nlcd_min = float(area) * area_units_conversion_factor * float(np.amin(values_array))
                             total_min = total_min + nlcd_min
                             new_feature.setAttribute(field_index + 3, nlcd_min)
-                        elif es_stat == "max":
-                            nlcd_max = float(pixel_count) * area_units_conversion_factor * float(np.amax(values_array))
-                            total_max = total_max + nlcd_max
-                            new_feature.setAttribute(field_index + 3, nlcd_max)
                         elif es_stat == "mean":
-                            nlcd_mean = float(pixel_count) * area_units_conversion_factor * float(np.mean(values_array))
+                            nlcd_mean = float(area) * area_units_conversion_factor * float(np.mean(values_array))
                             total_mean = total_mean + nlcd_mean
                             new_feature.setAttribute(field_index + 3, nlcd_mean)
-                elif es_name == "Total":
+                        elif es_stat == "max":
+                            nlcd_max = float(area) * area_units_conversion_factor * float(np.amax(values_array))
+                            total_max = total_max + nlcd_max
+                            new_feature.setAttribute(field_index + 3, nlcd_max)
+                elif es_name == "total":
                     if es_stat == "min":
                         new_feature.setAttribute(field_index + 3, total_min)
-                    if es_stat == "max":
-                        new_feature.setAttribute(field_index + 3, total_max)
                     if es_stat == "mean":
                         new_feature.setAttribute(field_index + 3, total_mean)
-                        mean_dict = {int(nlcd_code): total_mean/float(pixel_count)}
+                        mean_dict = {int(nlcd_code): total_mean}
                         raster_value_mapping_dict.update(mean_dict)
+                    if es_stat == "max":
+                        new_feature.setAttribute(field_index + 3, total_max)
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
