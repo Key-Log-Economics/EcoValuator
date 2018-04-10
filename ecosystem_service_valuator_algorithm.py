@@ -31,6 +31,7 @@ __revision__ = '$Format:%H$'
 
 import numpy as np
 from numpy import copy
+import processing
 
 from os.path import splitext
 
@@ -45,7 +46,10 @@ from qgis.core import (QgsProcessing,
                        QgsFields,
                        QgsFeature,
                        QgsProcessingParameterRasterDestination,
-                       QgsRasterFileWriter
+                       QgsRasterFileWriter,
+                       QgsProject,
+                       QgsProcessingParameterVectorLayer,
+                       QgsRasterLayer
                        )
 
 import appinter
@@ -56,6 +60,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_VECTOR = 'INPUT_VECTOR'
+    CLIPPED_RASTER = 'CLIPPED_RASTER'
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
@@ -75,13 +80,22 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         )
 
         # Input vector to be mask for raster
-        #self.addParameter(
-        #    QgsProcessingParameterFeatureSource(
-        #        self.INPUT_VECTOR,
-        #        self.tr('Mask layer'),
-        #        [QgsProcessing.TypeVectorAnyGeometry]
-        #    )
-        #)
+        self.addParameter(
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_VECTOR,
+                self.tr('Mask layer'),
+                [QgsProcessing.TypeVectorAnyGeometry]
+            )
+        )
+
+        # Add a parameter for the clipped raster layer
+        self.addParameter(
+            QgsProcessingParameterRasterDestination(
+                self.CLIPPED_RASTER,
+                self.tr('Clipped raster layer'),
+                ".tif"
+            )
+        )
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
@@ -125,6 +139,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         log = feedback.setProgressText
 
+        clipped_raster = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster }
 
@@ -135,6 +150,20 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             return result
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
+
+        #this doesn't work b/c the raster layer that was created by the processing.run call isn't "there" yet. Maybe it doesn't appear until after this whole processing algorithm is done, in which case we might not be able to use another algorithm w/in our algorithm
+        #processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+        #log(str(QgsProject.instance().mapLayers()))
+        #clipped_raster_layer = QgsProject.instance().mapLayersByName("Clipped raster layer")[0]
+
+        #This didn't seem to work either
+        #processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+        #clipped_raster_layer = QgsProject.instance().mapLayersByName("Clipped (mask))")[0]
+
+        #I think this is mostly working, although when I try to symbolize the output raster using the nlcd symbology it doesn't work. Not sure why.
+        processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': '/Users/philipribbens/Desktop/clipped_raster.tif'})
+        clipped_raster_layer = QgsRasterLayer('/Users/philipribbens/Desktop/clipped_raster.tif')
 
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
@@ -245,21 +274,13 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         # Output raster
         log(self.tr("Reading input raster into numpy array ..."))
-        grid = Raster.to_numpy(input_raster, band=1, dtype=int)
-        #log(str(type(grid)))               #<class 'numpy.ndarray'>
-        #log(str(grid.dtype))               #float32
-        #log(str(grid.shape))               #(2860, 3642)
-        #log(str(grid[0]))                  #[255. 255. 255. ... 255. 255. 255.]
-        #unique_values = np.unique(grid)
-        #log(str(unique_values))            #[ 11.  21.  22.  23.  24.  31.  41.  42.  43.  52.  71.  81.  82.  90. 95. 255.]
+        grid = Raster.to_numpy(clipped_raster_layer, band=1, dtype=int)
         log(self.tr("Array read"))
         log(self.tr("Mapping values"))
         output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
-        #output_unique_values = np.unique(output_array)
-        #log(str(output_unique_values))
         log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
-        Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
+        Raster.numpy_to_file(output_array, output_raster, src=str(clipped_raster_layer.source()))
 
         log(self.tr("Done!\n"))
 
