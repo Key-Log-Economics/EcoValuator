@@ -152,18 +152,16 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
 
-        #this doesn't work b/c the raster layer that was created by the processing.run call isn't "there" yet. Maybe it doesn't appear until after this whole processing algorithm is done, in which case we might not be able to use another algorithm w/in our algorithm
-        #processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
-        #log(str(QgsProject.instance().mapLayers()))
-        #clipped_raster_layer = QgsProject.instance().mapLayersByName("Clipped raster layer")[0]
+        #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
+        processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+        clipped_raster_layer = QgsRasterLayer(clipped_raster)
 
-        #This didn't seem to work either
-        #processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
-        #clipped_raster_layer = QgsProject.instance().mapLayersByName("Clipped (mask))")[0]
+        #Couldn't get this way to work
+        #clipped_raster_result = processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+        #log(str(clipped_raster_result))
+        #clipped_raster_layer = QgsRasterLayer(clipped_raster_result['OUTPUT'].sink)
 
-        #I think this is mostly working, although when I try to symbolize the output raster using the nlcd symbology it doesn't work. Not sure why.
-        processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': '/Users/philipribbens/Desktop/clipped_raster.tif'})
-        clipped_raster_layer = QgsRasterLayer('/Users/philipribbens/Desktop/clipped_raster.tif')
+        #Use processing.load() ?
 
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
@@ -274,6 +272,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         # Output raster
         log(self.tr("Reading input raster into numpy array ..."))
+        #use isValid() somewhere in here to make sure the incoming raster layer is valid
         grid = Raster.to_numpy(clipped_raster_layer, band=1, dtype=int)
         log(self.tr("Array read"))
         log(self.tr("Mapping values"))
