@@ -37,19 +37,13 @@ from os.path import splitext
 
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
-                       QgsFeatureSink,
                        QgsProcessingAlgorithm,
-                       QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterFeatureSink,
-                       QgsField,
-                       QgsFields,
-                       QgsFeature,
+                       QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterRasterDestination,
                        QgsRasterFileWriter,
-                       QgsProject,
-                       QgsProcessingParameterVectorLayer,
-                       QgsRasterLayer
+                       QgsRasterLayer,
+                       QgsProcessingParameterString
                        )
 
 import appinter
@@ -58,8 +52,9 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
-    CLIPPED_RASTER = 'CLIPPED_RASTER'
-    INPUT_ESV = 'INPUT_ESV'
+    INPUT_RASTER = 'INPUT_RASTER'
+    INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
+    INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
     OUTPUT_RASTER = 'OUTPUT_RASTER'
 
     def initAlgorithm(self, config):
@@ -69,20 +64,26 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         # Add a parameter for the clipped raster layer
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.CLIPPED_RASTER,
-                self.tr('Clipped raster layer'),
+                self.INPUT_RASTER,
+                self.tr('Input NLCD raster'),
                 ".tif"
             )
         )
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.INPUT_ESV,
-                self.tr('Ecosystem Service Values CSV'),
+                self.INPUT_ESV_TABLE,
+                self.tr('Input Ecosystem Service Values Table'),
                 [QgsProcessing.TypeFile]
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_ESV_FIELD,
+                self.tr('Input Ecosystem Service Value to create raster for')
+            )
+        )
         # Add a parameter for the output raster layer
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -101,36 +102,45 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         log = feedback.setProgressText
 
-        clipped_raster = self.parameterAsRasterLayer(parameters, self.CLIPPED_RASTER, context)
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
+        input_esv_field = self.parameterAsString(parameters, self.INPUT_ESV_FIELD, context)
+        log(input_esv_field)
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster }
 
-        '''
         # Check output format
         output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster)[1])
         if not output_format or output_format.lower() != "gtiff":
             log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
             return result
 
-        #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
-        processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
-        clipped_raster_layer = QgsRasterLayer(clipped_raster)
+        raster_value_mapping_dict = {}
 
-        esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
+        input_esv_table_features = input_esv_table.getFeatures()
+
+        input_esv_table_fields = input_esv_table.fields()
+
+        for input_esv_table_current, input_esv_table_feature in enumerate(input_esv_table_features):
+            nlcd_code = input_esv_table_feature.attributes()[0]
+            log(nlcd_code)
+            selected_esv = input_esv_table_feature.attribute(input_esv_field)
+            log(str(selected_esv))
+            raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
         # Output raster
         log(self.tr("Reading input raster into numpy array ..."))
         #use isValid() somewhere in here to make sure the incoming raster layer is valid
-        grid = Raster.to_numpy(clipped_raster_layer, band=1, dtype=int)
+        grid = Raster.to_numpy(input_raster, band=1, dtype=int)
         log(self.tr("Array read"))
         log(self.tr("Mapping values"))
         output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
         log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
-        Raster.numpy_to_file(output_array, output_raster, src=str(clipped_raster_layer.source()))
+        Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
 
         log(self.tr("Done!\n"))
-        '''
+
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
