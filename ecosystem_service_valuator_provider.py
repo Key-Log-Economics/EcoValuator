@@ -31,6 +31,7 @@ __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
 from .ecosystem_service_valuator_algorithm import EcosystemServiceValuatorAlgorithm
+from .create_ecosystem_service_value_raster_algorithm import CreateEcosystemServiceValueRasterAlgorithm
 
 
 class EcosystemServiceValuatorProvider(QgsProcessingProvider):
@@ -39,7 +40,7 @@ class EcosystemServiceValuatorProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [EcosystemServiceValuatorAlgorithm()]
+        self.alglist = [EcosystemServiceValuatorAlgorithm(), CreateEcosystemServiceValueRasterAlgorithm()]
 
     def unload(self):
         """
