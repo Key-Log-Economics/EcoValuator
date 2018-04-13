@@ -123,9 +123,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         for input_esv_table_current, input_esv_table_feature in enumerate(input_esv_table_features):
             nlcd_code = input_esv_table_feature.attributes()[0]
-            log(nlcd_code)
             selected_esv = input_esv_table_feature.attribute(input_esv_field)
-            log(str(selected_esv))
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
         # Output raster
@@ -148,7 +146,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        #return {self.OUTPUT: dest_id}
         return result
 
     def mapValues(self, numpy_array, dictionary):

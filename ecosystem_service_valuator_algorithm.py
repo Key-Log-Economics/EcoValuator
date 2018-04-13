@@ -49,7 +49,8 @@ from qgis.core import (QgsProcessing,
                        QgsRasterFileWriter,
                        QgsProject,
                        QgsProcessingParameterVectorLayer,
-                       QgsRasterLayer
+                       QgsRasterLayer,
+                       QgsProcessingFeatureSource
                        )
 
 import appinter
@@ -64,7 +65,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
-    OUTPUT_RASTER = 'OUTPUT_RASTER'
 
     def initAlgorithm(self, config):
         """
@@ -121,15 +121,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        # Add a parameter for the output raster layer
-        self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER,
-                self.tr('Output raster layer'),
-                ".tif"
-            )
-        )
-
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
@@ -139,30 +130,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
 
         log = feedback.setProgressText
 
-        clipped_raster = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
-        output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        result = { self.OUTPUT_RASTER : output_raster }
-
-        # Check output format
-        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster)[1])
-        if not output_format or output_format.lower() != "gtiff":
-            log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
-            return result
-
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
-
-        #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
-        processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
-        clipped_raster_layer = QgsRasterLayer(clipped_raster)
-
-        #Couldn't get this way to work
-        #clipped_raster_result = processing.runAndLoadResults("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
-        #log(str(clipped_raster_result))
-        #clipped_raster_layer = QgsRasterLayer(clipped_raster_result['OUTPUT'].sink)
-
-        #Use processing.load() ?
-
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
         esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
@@ -195,13 +164,25 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
                 context, sink_fields, raster_summary_source.wkbType(), raster_summary_source.sourceCrs())
 
+        clipped_raster = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
+
+        result = {self.CLIPPED_RASTER : clipped_raster, self.OUTPUT_TABLE : dest_id}
+
+        # Check output format
+        output_format = QgsRasterFileWriter.driverForExtension(splitext(clipped_raster)[1])
+        if not output_format or output_format.lower() != "gtiff":
+            log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
+            return result
+
+        #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
+        processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+
         # Compute the number of steps to display within the progress bar and
         # get features from source
         total = 100.0 / raster_summary_source.featureCount() if raster_summary_source.featureCount() else 0
 
         raster_summary_features = raster_summary_source.getFeatures()
 
-        raster_value_mapping_dict = {}
         area_units_conversion_factor = 0.0001
 
         # Calculate mins, maxs, and means for each unique combo of NLCD code and
@@ -223,7 +204,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             total_min = 0
             total_mean = 0
             total_max = 0
-
 
             for field_index in stat_fields.allAttributesList():
                 es = stat_fields.field(field_index).name().split("_")
@@ -259,8 +239,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                         new_feature.setAttribute(field_index + 3, total_min)
                     if es_stat == "mean":
                         new_feature.setAttribute(field_index + 3, total_mean)
-                        mean_dict = {int(nlcd_code): total_mean}
-                        raster_value_mapping_dict.update(mean_dict)
                     if es_stat == "max":
                         new_feature.setAttribute(field_index + 3, total_max)
 
@@ -270,26 +248,12 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             # Update the progress bar
             feedback.setProgress(int(raster_summary_current * total))
 
-        # Output raster
-        log(self.tr("Reading input raster into numpy array ..."))
-        #use isValid() somewhere in here to make sure the incoming raster layer is valid
-        grid = Raster.to_numpy(clipped_raster_layer, band=1, dtype=int)
-        log(self.tr("Array read"))
-        log(self.tr("Mapping values"))
-        output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
-        log(self.tr("Values mapped"))
-        log(self.tr("Saving output raster ..."))
-        Raster.numpy_to_file(output_array, output_raster, src=str(clipped_raster_layer.source()))
-
-        log(self.tr("Done!\n"))
-
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
         # algorithms may return multiple feature sinks, calculated numeric
         # statistics, etc. These should all be included in the returned
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
-        #return {self.OUTPUT: dest_id}
         return result
 
     def mapValues(self, numpy_array, dictionary):
