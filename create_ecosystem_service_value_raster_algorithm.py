@@ -105,7 +105,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
         input_esv_field = self.parameterAsString(parameters, self.INPUT_ESV_FIELD, context)
-        log(input_esv_field)
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster }
 
@@ -124,6 +123,13 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         for input_esv_table_current, input_esv_table_feature in enumerate(input_esv_table_features):
             nlcd_code = input_esv_table_feature.attributes()[0]
             selected_esv = input_esv_table_feature.attribute(input_esv_field)
+            #If there is no ESV for tis particular NLCD-ES combo Then
+            # the cell will be Null (i.e. None) and so we're dealing with
+            # that below by setting the value to 255, which is the value
+            # of the other cells that don't have values (at least for this
+            # data)
+            if selected_esv is None:
+                selected_esv = 255
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
         # Output raster
