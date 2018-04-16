@@ -130,6 +130,12 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             # data)
             if selected_esv is None:
                 selected_esv = 255
+            #If it's not null then we need to convert the total ESV for
+            # the whole area covered by that land cover (which is in USD/hectare)
+            # to the per pixel ESV (USD/pixel)
+            else:
+                num_pixels = input_esv_table_feature.attributes()[1]
+                selected_esv = int(selected_esv) / 0.0001 / int(num_pixels)
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
         # Output raster
