@@ -100,9 +100,10 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.INPUT_ESV_FIELD,
-                self.tr('Input Ecosystem Service Value to create raster for')
+                self.tr('Input Ecosystem Service Value field to create raster for')
             )
         )
+
         # Add a parameter for the output raster layer
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -120,7 +121,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         App = appinter.App
 
         log = feedback.setProgressText
-
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_nodata_value = self.parameterAsInt(parameters, self.INPUT_NODATA_VALUE, context)
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
@@ -140,7 +140,13 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
-            selected_esv = input_esv_table_feature.attribute(input_esv_field)
+            try:
+                selected_esv = input_esv_table_feature.attribute(input_esv_field)
+            except KeyError:
+                feedback.reportError("The Input Ecosystem Service Value field you specified doesn't exist in this dataset. Please enter one of the fields that does exist: ")
+                feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
+                log("")
+                return result
             #If there is no ESV for tis particular NLCD-ES combo Then
             # the cell will be Null (i.e. None) and so we're dealing with
             # that below by setting the value to 255, which is the value
@@ -168,7 +174,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
 
         log(self.tr("Done!\n"))
-
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
