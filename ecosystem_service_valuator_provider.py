@@ -30,7 +30,7 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
-from .ecosystem_service_valuator_algorithm import EcosystemServiceValuatorAlgorithm
+from .create_ecosystem_service_values_table_algorithm import CreateEcosystemServiceValuesTableAlgorithm
 from .create_ecosystem_service_value_raster_algorithm import CreateEcosystemServiceValueRasterAlgorithm
 
 
@@ -40,7 +40,7 @@ class EcosystemServiceValuatorProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [EcosystemServiceValuatorAlgorithm(), CreateEcosystemServiceValueRasterAlgorithm()]
+        self.alglist = [CreateEcosystemServiceValuesTableAlgorithm(), CreateEcosystemServiceValueRasterAlgorithm()]
 
     def unload(self):
         """
