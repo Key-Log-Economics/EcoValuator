@@ -162,7 +162,8 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
-                context, sink_fields, raster_summary_source.wkbType(), raster_summary_source.sourceCrs())
+                context,
+                sink_fields)
 
         clipped_raster = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 

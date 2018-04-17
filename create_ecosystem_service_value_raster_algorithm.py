@@ -138,9 +138,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         input_esv_table_features = input_esv_table.getFeatures()
 
-        input_esv_table_fields = input_esv_table.fields()
-
-        for input_esv_table_current, input_esv_table_feature in enumerate(input_esv_table_features):
+        for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
             selected_esv = input_esv_table_feature.attribute(input_esv_field)
             #If there is no ESV for tis particular NLCD-ES combo Then
