@@ -104,6 +104,24 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
         esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
 
+        esv_source_field_names = esv_source.fields().names()
+        if len(esv_source_field_names) != 4:
+            feedback.reportError("The ESV data table should have 4 columns, the one you input has " + str(len(esv_source_field_names)))
+            log("")
+            return {self.OUTPUT_TABLE : ''}
+        else:
+            log("ESV data table has 4 columns. Check")
+
+        nlcd_codes = [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95]
+        esv_source_col1_values = esv_source.uniqueValues(0)
+        if all(int(value) in nlcd_codes for value in esv_source_col1_values):
+            log("All of the values in column 1 of the ESV data table are NLCD codes. Check")
+        else:
+            feedback.reportError("Not all of the values in column 1 of the ESV data table are NLCD codes. Your dataset should only include valid NLCD codes.")
+            feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
+            log("")
+            return {self.OUTPUT_TABLE : ''}
+
         # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
         stat_fields = QgsFields()
