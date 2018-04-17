@@ -55,13 +55,11 @@ from qgis.core import (QgsProcessing,
 
 import appinter
 
-class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
+class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
-    INPUT_VECTOR = 'INPUT_VECTOR'
-    CLIPPED_RASTER = 'CLIPPED_RASTER'
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
@@ -70,32 +68,6 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         """
         Here we define the inputs and output of the algorithm
         """
-
-        # Input raster
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster layer')
-            )
-        )
-
-        # Input vector to be mask for raster
-        self.addParameter(
-            QgsProcessingParameterVectorLayer(
-                self.INPUT_VECTOR,
-                self.tr('Mask layer'),
-                [QgsProcessing.TypeVectorAnyGeometry]
-            )
-        )
-
-        # Add a parameter for the clipped raster layer
-        self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.CLIPPED_RASTER,
-                self.tr('Clipped raster layer'),
-                ".tif"
-            )
-        )
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
@@ -125,16 +97,30 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        Raster = appinter.Raster
-        App = appinter.App
 
         log = feedback.setProgressText
 
-        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
         esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
+
+        esv_source_field_names = esv_source.fields().names()
+        if len(esv_source_field_names) != 4:
+            feedback.reportError("The ESV data table should have 4 columns, the one you input has " + str(len(esv_source_field_names)))
+            log("")
+            return {self.OUTPUT_TABLE : ''}
+        else:
+            log("ESV data table has 4 columns. Check")
+
+        nlcd_codes = [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95]
+        esv_source_col1_values = esv_source.uniqueValues(0)
+        if all(int(value) in nlcd_codes for value in esv_source_col1_values):
+            log("All of the values in column 1 of the ESV data table are NLCD codes. Check")
+        else:
+            feedback.reportError("Not all of the values in column 1 of the ESV data table are NLCD codes. Your dataset should only include valid NLCD codes.")
+            feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
+            log("")
+            return {self.OUTPUT_TABLE : ''}
 
         # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
@@ -165,18 +151,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
                 context,
                 sink_fields)
 
-        clipped_raster = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
-
-        result = {self.CLIPPED_RASTER : clipped_raster, self.OUTPUT_TABLE : dest_id}
-
-        # Check output format
-        output_format = QgsRasterFileWriter.driverForExtension(splitext(clipped_raster)[1])
-        if not output_format or output_format.lower() != "gtiff":
-            log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
-            return result
-
-        #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
-        processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster})
+        result = {self.OUTPUT_TABLE : dest_id}
 
         # Compute the number of steps to display within the progress bar and
         # get features from source
@@ -271,7 +246,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Ecosystem Service Valuator'
+        return 'Create Ecosystem Service Values Table'
 
     def displayName(self):
         """
@@ -301,4 +276,4 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return EcosystemServiceValuatorAlgorithm()
+        return CreateEcosystemServiceValuesTableAlgorithm()
