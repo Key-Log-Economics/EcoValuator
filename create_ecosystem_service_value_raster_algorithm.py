@@ -100,7 +100,8 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.INPUT_ESV_FIELD,
-                self.tr('Input Ecosystem Service Value field to create raster for')
+                self.tr('Input Ecosystem Service Value field to create raster for'),
+                'total_min'
             )
         )
 
