@@ -176,7 +176,7 @@ class EcosystemServiceValuatorAlgorithm(QgsProcessingAlgorithm):
             return result
 
         #I think this is mostly working, although I need to find a way to ignore/get rid of the blank pixels
-        processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':5, 'OUTPUT': clipped_raster})
+        processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':False, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster})
 
         # Compute the number of steps to display within the progress bar and
         # get features from source
