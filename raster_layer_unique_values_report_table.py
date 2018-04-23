@@ -47,6 +47,8 @@ from qgis.core import (QgsProcessing,
                        )
 
 import appinter
+from parser import HTMLTableParser
+
 
 class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
@@ -73,7 +75,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_TABLE,
-                self.tr('Output data table layer')
+                self.tr('Output raster summary')
             )
         )
 
@@ -85,7 +87,11 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         App = appinter.App
 
         log = feedback.setProgressText
-        input_html = self.parameterAsFile(parameters, self.INPUT_HTML, context)
+        input_html_path = self.parameterAsFile(parameters, self.INPUT_HTML, context)
+        log("input_html_path: " + input_html_path)
+        input_html = open(input_html_path, 'r', encoding='latin1')
+        input_html_string = input_html.read()
+        log("input_html_string: " + input_html_string)
 
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
@@ -98,10 +104,22 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
 
         result = {self.OUTPUT_TABLE : dest_id}
 
-        new_feature = QgsFeature(output_table_fields)
+        # instantiate the parser and then parse the table elements into a python list of lists
+        # (per https://stackoverflow.com/questions/6325216/parse-html-table-to-python-list/22320207#22320207)
+        p = HTMLTableParser()
+        p.feed(input_html_string)
+        table_as_list_of_lists = p.tables[0]
+        # delete the header row
+        del table_as_list_of_lists[0]
 
-        # Add a feature in the sink
-        sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+        #iterate through the list adding a new feature to the feature sink for every row
+        # and a new attribute for every data point
+        for tr in table_as_list_of_lists:
+            new_feature = QgsFeature(output_table_fields)
+            for counter, td in enumerate(tr):
+                new_feature.setAttribute(counter, td)
+            # Add a feature in the sink
+            sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
