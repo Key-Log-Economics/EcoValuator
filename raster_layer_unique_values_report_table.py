@@ -47,7 +47,7 @@ from qgis.core import (QgsProcessing,
                        )
 
 import appinter
-from parser import HTMLTableParser
+from .parser import HTMLTableParser
 
 
 class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
@@ -87,11 +87,10 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         App = appinter.App
 
         log = feedback.setProgressText
+        
         input_html_path = self.parameterAsFile(parameters, self.INPUT_HTML, context)
-        log("input_html_path: " + input_html_path)
         input_html = open(input_html_path, 'r', encoding='latin1')
         input_html_string = input_html.read()
-        log("input_html_string: " + input_html_string)
 
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
