@@ -43,7 +43,9 @@ from qgis.core import (QgsProcessing,
                        QgsFields,
                        QgsField,
                        QgsFeature,
-                       QgsFeatureSink
+                       QgsFeatureSink,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterFileDestination
                        )
 
 import appinter
@@ -54,20 +56,26 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
-    INPUT_HTML = 'INPUT_HTML'
+    INPUT_RASTER = 'INPUT_RASTER'
+    HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
 
     def initAlgorithm(self, config):
         """
         Here we define the inputs and output of the algorithm
         """
-        # Add a parameter for the clipped raster layer
+
         self.addParameter(
-            QgsProcessingParameterFile(
-                self.INPUT_HTML,
-                self.tr('Input html file from Raster layer unique values report'),
-                QgsProcessingParameterFile.File,
-                "html"
+            QgsProcessingParameterRasterLayer(
+                self.INPUT_RASTER,
+                self.tr('Input NLCD raster')
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.HTML_OUTPUT_PATH,
+                self.tr('Place to save output html file')
             )
         )
 
@@ -87,9 +95,12 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         App = appinter.App
 
         log = feedback.setProgressText
-        
-        input_html_path = self.parameterAsFile(parameters, self.INPUT_HTML, context)
-        input_html = open(input_html_path, 'r', encoding='latin1')
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
+
+        processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':input_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path})
+
+        input_html = open(html_output_path, 'r', encoding='latin1')
         input_html_string = input_html.read()
 
         output_table_fields = QgsFields()
