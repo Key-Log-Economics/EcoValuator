@@ -83,7 +83,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_TABLE,
-                self.tr('Output raster summary')
+                self.tr('Output table of raster unique values')
             )
         )
 
@@ -147,7 +147,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Raster Layer Unique Values Report Table'
+        return 'Raster layer unique values report (table)'
 
     def displayName(self):
         """
@@ -171,7 +171,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Ecosystem Service Valuator'
+        return 'Ecosystem service valuator'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

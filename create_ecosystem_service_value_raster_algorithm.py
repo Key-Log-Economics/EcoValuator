@@ -92,7 +92,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.INPUT_ESV_TABLE,
-                self.tr('Input Ecosystem Service Values Table'),
+                self.tr('Input ESV table'),
                 [QgsProcessing.TypeFile]
             )
         )
@@ -100,7 +100,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.INPUT_ESV_FIELD,
-                self.tr('Input Ecosystem Service Value field to create raster for'),
+                self.tr('Input ESV field to create raster for'),
                 'total_min'
             )
         )
@@ -198,7 +198,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Create Ecosystem Service Value Raster'
+        return 'Create ESV raster'
 
     def displayName(self):
         """
@@ -222,7 +222,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Ecosystem Service Valuator'
+        return 'Ecosystem service valuator'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
