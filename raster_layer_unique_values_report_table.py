@@ -48,7 +48,6 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFileDestination
                        )
 
-import appinter
 from .parser import HTMLTableParser
 
 
@@ -91,8 +90,6 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        Raster = appinter.Raster
-        App = appinter.App
 
         log = feedback.setProgressText
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)

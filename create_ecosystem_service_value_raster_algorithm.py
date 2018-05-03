@@ -47,7 +47,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterNumber
                        )
 
-import appinter
+from .appinter import (Raster, App)
 
 class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
@@ -118,8 +118,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        Raster = appinter.Raster
-        App = appinter.App
 
         log = feedback.setProgressText
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)

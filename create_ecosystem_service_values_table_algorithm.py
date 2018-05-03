@@ -53,8 +53,6 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingFeatureSource
                        )
 
-import appinter
-
 class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
