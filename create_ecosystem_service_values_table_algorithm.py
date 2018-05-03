@@ -146,9 +146,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         # putting our output data. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
-                context,
-                sink_fields)
+        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE, context, sink_fields)
 
         result = {self.OUTPUT_TABLE : dest_id}
 

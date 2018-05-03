@@ -68,14 +68,14 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
-                self.tr('Input NLCD raster')
+                self.tr('Input raster')
             )
         )
 
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
-                self.tr('Place to save output html file')
+                self.tr('Place to save intermediate html file')
             )
         )
 

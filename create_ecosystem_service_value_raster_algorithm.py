@@ -144,7 +144,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             try:
                 selected_esv = input_esv_table_feature.attribute(input_esv_field)
             except KeyError:
-                feedback.reportError("The Input Ecosystem Service Value field you specified doesn't exist in this dataset. Please enter one of the fields that does exist: ")
+                feedback.reportError("The Input ESV field you specified doesn't exist in this dataset. Please enter one of the fields that does exist: ")
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
                 log("")
                 return result
