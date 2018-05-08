@@ -58,6 +58,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
+    OUTPUT_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
 
     def initAlgorithm(self, config):
         """
@@ -74,7 +75,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
-                self.tr('Place to save intermediate html file')
+                self.tr('Place to save intermediate html file [optional]')
             )
         )
 
@@ -82,7 +83,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_TABLE,
-                self.tr('Output table of raster unique values')
+                self.tr(self.OUTPUT_TABLE_FILENAME_DEFAULT)
             )
         )
 
@@ -105,6 +106,11 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         output_table_fields.append(QgsField("pixel_count"))
         output_table_fields.append(QgsField("area_m2"))
 
+        #log("input raster name: " + str(input_raster.name()))
+
+        dest_name = self.OUTPUT_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_raster.name()
+        setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
+        #log("destinationName: " + str(parameters['OUTPUT_TABLE'].destinationName))
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
                 context,
                 output_table_fields)
