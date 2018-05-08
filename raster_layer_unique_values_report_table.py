@@ -45,7 +45,8 @@ from qgis.core import (QgsProcessing,
                        QgsFeature,
                        QgsFeatureSink,
                        QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterFileDestination
+                       QgsProcessingParameterFileDestination,
+                       QgsProcessingOutputLayerDefinition
                        )
 
 from .parser import HTMLTableParser
@@ -106,8 +107,14 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         output_table_fields.append(QgsField("pixel_count"))
         output_table_fields.append(QgsField("area_m2"))
 
+        #Append input raster filename to end of output table filename
         dest_name = self.OUTPUT_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_raster.name()
-        setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
+        if isinstance(parameters['OUTPUT_TABLE'], QgsProcessingOutputLayerDefinition):
+            setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
+        elif isinstance(parameters['OUTPUT_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
+            if parameters['OUTPUT_TABLE'][0:8] == "memory:":
+                parameters['OUTPUT_TABLE'] = parameters['OUTPUT_TABLE'].replace(" ", "_") + "_" + input_raster.name()
+
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
                 context,
                 output_table_fields)
