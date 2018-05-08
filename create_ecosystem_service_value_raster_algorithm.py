@@ -44,7 +44,8 @@ from qgis.core import (QgsProcessing,
                        QgsRasterFileWriter,
                        QgsRasterLayer,
                        QgsProcessingParameterString,
-                       QgsProcessingParameterNumber
+                       QgsProcessingParameterNumber,
+                       QgsProcessingOutputLayerDefinition
                        )
 
 from .appinter import (Raster, App)
@@ -58,6 +59,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
     OUTPUT_RASTER = 'OUTPUT_RASTER'
+    OUTPUT_RASTER_FILENAME_DEFAULT = 'Output raster layer'
 
     def initAlgorithm(self, config):
         """
@@ -109,7 +111,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
-                self.tr('Output raster layer'),
+                self.tr(self.OUTPUT_RASTER_FILENAME_DEFAULT),
                 ".tif"
             )
         )
@@ -124,6 +126,12 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         input_nodata_value = self.parameterAsInt(parameters, self.INPUT_NODATA_VALUE, context)
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
         input_esv_field = self.parameterAsString(parameters, self.INPUT_ESV_FIELD, context)
+
+        #Append input raster filename to end of output raster filename
+        if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
+            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field
+            setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
+
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster }
 
