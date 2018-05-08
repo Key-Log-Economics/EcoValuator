@@ -46,7 +46,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterString,
                        QgsProcessingParameterNumber,
                        QgsProcessingOutputLayerDefinition,
-                       QgsProcessingParameterEnum
+                       QgsProcessingParameterEnum,
+                       QgsMapLayerStyle
                        )
 
 from .appinter import (Raster, App)
@@ -148,11 +149,11 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field + "_" + input_esv_stat
             setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
 
-        output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        result = { self.OUTPUT_RASTER : output_raster }
+        output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        result = { self.OUTPUT_RASTER : output_raster_destination }
 
         # Check output format
-        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster)[1])
+        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster_destination)[1])
         if not output_format or output_format.lower() != "gtiff":
             log("CRITICAL: Currently only GeoTIFF output format allowed, exiting!")
             return result
@@ -194,8 +195,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
         log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
-        Raster.numpy_to_file(output_array, output_raster, src=str(input_raster.source()))
-
+        Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
         log(self.tr("Done!\n"))
 
         # Return the results of the algorithm. In this case our only result is
