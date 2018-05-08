@@ -45,7 +45,8 @@ from qgis.core import (QgsProcessing,
                        QgsRasterLayer,
                        QgsProcessingParameterString,
                        QgsProcessingParameterNumber,
-                       QgsProcessingOutputLayerDefinition
+                       QgsProcessingOutputLayerDefinition,
+                       QgsProcessingParameterEnum
                        )
 
 from .appinter import (Raster, App)
@@ -58,8 +59,12 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     INPUT_NODATA_VALUE = 'INPUT_NODATA_VALUE'
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
+    INPUT_ESV_FIELD_OPTIONS = ['aesthetic','air quality', 'biocontrol', 'climate', 'cognitive', 'cultural (other)', 'cultural service [general]', 'energy', 'erosion', 'extreme events', 'food', 'genepool', 'genetic', 'medical', 'nursery', 'pollination', 'raw materials', 'recreation', 'science and education', 'soil fertility', 'soil formation', 'tev', 'total', 'various', 'waste', 'water', 'water flows']
+    INPUT_ESV_STAT = 'INPUT_ESV_STAT'
+    STATS = ['min','mean','max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
     OUTPUT_RASTER_FILENAME_DEFAULT = 'Output raster layer'
+
 
     def initAlgorithm(self, config):
         """
@@ -100,10 +105,18 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         )
 
         self.addParameter(
-            QgsProcessingParameterString(
+            QgsProcessingParameterEnum(
                 self.INPUT_ESV_FIELD,
-                self.tr('Input ESV field to create raster for'),
-                'total_min'
+                self.tr('Input ecosystem service to create raster for'),
+                self.INPUT_ESV_FIELD_OPTIONS
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_ESV_STAT,
+                self.tr('Statistic to create ESV raster for'),
+                self.STATS
             )
         )
 
@@ -125,11 +138,14 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_nodata_value = self.parameterAsInt(parameters, self.INPUT_NODATA_VALUE, context)
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
-        input_esv_field = self.parameterAsString(parameters, self.INPUT_ESV_FIELD, context)
+        input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
+        input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
+        input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
+        input_esv_stat = self.STATS[input_esv_stat_index]
 
         #Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field
+            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field + "_" + input_esv_stat
             setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
 
         output_raster = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
@@ -148,7 +164,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
             try:
-                selected_esv = input_esv_table_feature.attribute(input_esv_field)
+                selected_esv = input_esv_table_feature.attribute(input_esv_field+ "_" + input_esv_stat)
             except KeyError:
                 feedback.reportError("The Input ESV field you specified doesn't exist in this dataset. Please enter one of the fields that does exist: ")
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
