@@ -50,7 +50,8 @@ from qgis.core import (QgsProcessing,
                        QgsProject,
                        QgsProcessingParameterVectorLayer,
                        QgsRasterLayer,
-                       QgsProcessingFeatureSource
+                       QgsProcessingFeatureSource,
+                       QgsProcessingOutputLayerDefinition
                        )
 
 class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
@@ -61,6 +62,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
+    OUTPUT_TABLE_FILENAME_DEFAULT = 'Output ESV table'
 
     def initAlgorithm(self, config):
         """
@@ -86,7 +88,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_TABLE,
-                self.tr('Output ESV table')
+                self.tr(self.OUTPUT_TABLE_FILENAME_DEFAULT)
             )
         )
 
@@ -139,6 +141,12 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
 
         sink_fields = raster_summary_source.fields()
         sink_fields.extend(stat_fields)
+
+        #Append raster filename (obtained from stuff after first '-' in the input raster unique values table filename) to end of output table filename
+        raster_filename = '-'.join(raster_summary_source.sourceName().split('-')[1:])
+        if isinstance(parameters['OUTPUT_TABLE'], QgsProcessingOutputLayerDefinition):
+            dest_name = self.OUTPUT_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "-" + raster_filename
+            setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
 
         # Create the feature sink for the output data table, i.e. the place where we're going to start
         # putting our output data. The 'dest_id' variable is used
