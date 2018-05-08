@@ -106,11 +106,8 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         output_table_fields.append(QgsField("pixel_count"))
         output_table_fields.append(QgsField("area_m2"))
 
-        #log("input raster name: " + str(input_raster.name()))
-
         dest_name = self.OUTPUT_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_raster.name()
         setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
-        #log("destinationName: " + str(parameters['OUTPUT_TABLE'].destinationName))
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
                 context,
                 output_table_fields)
