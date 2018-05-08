@@ -276,12 +276,12 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         return 'Ecosystem service valuator'
 
     def shortHelpString(self):
-            """
-            Returns a localised short helper string for the algorithm. This string
-            should provide a basic description about what the algorithm does and the
-            parameters and outputs associated with it..
-            """
-            return self.tr("Short description of " + self.name() + " algorithm")
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it..
+        """
+        return self.tr("Short description of " + self.name() + " algorithm")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
