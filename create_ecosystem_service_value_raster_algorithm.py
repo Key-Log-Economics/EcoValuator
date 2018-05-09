@@ -75,8 +75,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
-                self.tr('Input NLCD raster'),
-                ".tif"
+                self.tr('Input NLCD raster')
             )
         )
 
@@ -192,7 +191,11 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         grid = Raster.to_numpy(input_raster, band=1, dtype=int)
         log(self.tr("Array read"))
         log(self.tr("Mapping values"))
-        output_array = self.mapValues(grid, raster_value_mapping_dict)   #takes about 8 seconds
+        output_array = copy(grid)
+        for key, value in raster_value_mapping_dict.items():
+            if feedback.isCanceled():
+                return result
+            output_array[grid==key] = value
         log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
         Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
@@ -205,12 +208,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
         return result
-
-    def mapValues(self, numpy_array, dictionary):
-        output_array = copy(numpy_array)
-        for key, value in dictionary.items():
-            output_array[numpy_array==key] = value
-        return output_array
 
     def name(self):
         """
