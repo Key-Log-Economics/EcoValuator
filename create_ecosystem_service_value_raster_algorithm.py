@@ -137,12 +137,11 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         log = feedback.setProgressText
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_nodata_value = self.parameterAsInt(parameters, self.INPUT_NODATA_VALUE, context)
-        input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
         input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
         input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
         input_esv_stat = self.STATS[input_esv_stat_index]
-
+        
         #Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
             dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field + "_" + input_esv_stat
@@ -150,6 +149,27 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster_destination }
+
+        input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
+
+        input_esv_table_col_names = input_esv_table.fields().names()
+        if len(input_esv_table_col_names) <= 3:
+            feedback.reportError("The Input ESV table should have at least 4 columns, the one you input only has " + str(len(input_esv_table_col_names)))
+            log("")
+            return result
+        else:
+            log("Input ESV table has at least 4 columns. Check")
+
+        stats = ['min','mean','max']
+        input_esv_table_esv_stat_col_names = input_esv_table_col_names[3:]
+        input_esv_table_name_stats = [i.split('_', 1)[1] for i in input_esv_table_esv_stat_col_names]
+        if all(str(i) in stats for i in input_esv_table_name_stats):
+            log("The table appears to include ESV stats columns. Check")
+        else:
+            feedback.reportError("One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 4 through the last column should all end with \"_min\", \"_mean\", or \"_max\".")
+            #feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
+            log("")
+            return result
 
         # Check output format
         output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster_destination)[1])
@@ -164,9 +184,9 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
             try:
-                selected_esv = input_esv_table_feature.attribute(input_esv_field+ "_" + input_esv_stat)
+                selected_esv = input_esv_table_feature.attribute(input_esv_field + "_" + input_esv_stat)
             except KeyError:
-                feedback.reportError("The Input ESV field you specified doesn't exist in this dataset. Please enter one of the fields that does exist: ")
+                feedback.reportError("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
                 log("")
                 return result

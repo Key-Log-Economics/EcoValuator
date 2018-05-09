@@ -97,7 +97,7 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
 
-        processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':input_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, feedback=feedback)
+        processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':input_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
 
         input_html = open(html_output_path, 'r', encoding='latin1')
         input_html_string = input_html.read()
