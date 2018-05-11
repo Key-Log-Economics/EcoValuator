@@ -97,11 +97,6 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
 
-        processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':input_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
-
-        input_html = open(html_output_path, 'r', encoding='latin1')
-        input_html_string = input_html.read()
-
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
         output_table_fields.append(QgsField("pixel_count"))
@@ -120,6 +115,20 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
                 output_table_fields)
 
         result = {self.OUTPUT_TABLE : dest_id}
+
+        units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
+        units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
+        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
+            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
+                feedback.pushDebugInfo("Your input raster's pixels weren't exactly 30x30 meters, but were close enough that the program will continue running. Your input raster's pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+            else:
+                feedback.reportError("The input raster should have 30x30 meter pixels. The one you input is " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+                log("")
+                return result
+
+        processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':input_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
+        input_html = open(html_output_path, 'r', encoding='latin1')
+        input_html_string = input_html.read()
 
         # instantiate the parser and then parse the table elements into a python list of lists
         # (per https://stackoverflow.com/questions/6325216/parse-html-table-to-python-list/22320207#22320207)

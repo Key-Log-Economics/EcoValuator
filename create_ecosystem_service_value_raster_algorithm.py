@@ -141,7 +141,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
         input_esv_stat = self.STATS[input_esv_stat_index]
-        
+
         #Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
             dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name() + "-" + input_esv_field + "_" + input_esv_stat
@@ -149,6 +149,16 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster_destination }
+
+        units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
+        units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
+        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
+            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
+                feedback.pushDebugInfo("Your input raster pixels weren't exactly 30x30 meters, but were close enough that the program will continue to run. Your input raster pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+            else:
+                feedback.reportError("The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+                log("")
+                return result
 
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
