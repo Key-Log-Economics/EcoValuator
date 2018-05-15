@@ -54,7 +54,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterVectorLayer,
                        QgsRasterLayer,
                        QgsProcessingFeatureSource,
-                       QgsProcessingOutputLayerDefinition
+                       QgsProcessingOutputLayerDefinition,
+                       QgsProcessingParameterEnum
                        )
 
 class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
@@ -64,8 +65,10 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
+    ESV_CSVS = ['a.csv', 'b.csv']
     OUTPUT_TABLE = 'OUTPUT_TABLE'
     OUTPUT_TABLE_FILENAME_DEFAULT = 'Output ESV table'
+
 
     def initAlgorithm(self, config):
         """
@@ -80,13 +83,12 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         )
 
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterEnum(
                 self.INPUT_ESV,
                 self.tr('Input table of ESV research data'),
-                [QgsProcessing.TypeFile]
+                self.ESV_CSVS
             )
         )
-
         # Add a feature sink for the output data table
         self.addParameter(
             QgsProcessingParameterFeatureSink(
@@ -104,33 +106,15 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
 
         #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
-        esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
+        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
+        input_esv = self.ESV_CSVS[input_esv_index]
 
         __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
 
-        with open(os.path.join(__location__, 'ESValuator_DataInputTool - ESVperHA.csv'), newline='') as f:
+        with open(os.path.join(__location__, input_esv), newline='') as f:
             reader = csv.reader(f)
             for row in reader:
                 log(str(row))
-        '''
-        esv_source_field_names = esv_source.fields().names()
-        if len(esv_source_field_names) != 4:
-            feedback.reportError("The ESV data table should have 4 columns, the one you input has " + str(len(esv_source_field_names)))
-            log("")
-            return {self.OUTPUT_TABLE : ''}
-        else:
-            log("ESV data table has 4 columns. Check")
-
-        nlcd_codes = [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95]
-        esv_source_col1_values = esv_source.uniqueValues(0)
-        if all(int(value) in nlcd_codes for value in esv_source_col1_values):
-            log("All of the values in column 1 of the ESV data table are NLCD codes. Check")
-        else:
-            feedback.reportError("Not all of the values in column 1 of the ESV data table are NLCD codes. Your dataset should only include valid NLCD codes.")
-            feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
-            log("")
-            return {self.OUTPUT_TABLE : ''}
-        '''
 
         # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
