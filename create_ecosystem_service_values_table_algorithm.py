@@ -74,7 +74,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     for file in os.listdir(__esv_data_location__):   #https://stackoverflow.com/questions/3964681/find-all-files-in-a-directory-with-extension-txt-in-python?page=1&tab=votes#tab-top
         if file.endswith(".csv"):
             ESV_CSVS.append(file)
-            
+
     OUTPUT_TABLE = 'OUTPUT_TABLE'
     OUTPUT_TABLE_FILENAME_DEFAULT = 'Output ESV table'
 
@@ -112,26 +112,31 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
 
         log = feedback.setProgressText
 
-        #Create feature sources out of both input CSVs so we can use their contents
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
-        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
-        input_esv = self.ESV_CSVS[input_esv_index]
 
-        with open(os.path.join(__esv_data_location__ , input_esv), newline='') as f:
+        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
+        input_esv_path = self.ESV_CSVS[input_esv_index]
+        input_esv_table = []
+        with open(os.path.join(__esv_data_location__ , input_esv_path), newline='') as f:
             reader = csv.reader(f)
             for row in reader:
-                log(str(row))
+                input_esv_table.append(row)
+
+        #change column names
+        input_esv_table[0][2] = "min"
+        input_esv_table[0][3] = "mean"
+        input_esv_table[0][4] = "max"
 
         # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
         stat_fields = QgsFields()
         # Then append new fields for the min, max, and mean of each unique
         # ecosystem service (i.e. water, recreation, etc)
-        unique_eco_services = esv_source.uniqueValues(2)
+        unique_eco_services = set([row[1] for row in input_esv_table[1:]])
         for eco_service in unique_eco_services:
-            min_field_str = eco_service.lower() + "_" + "min"
-            mean_field_str = eco_service.lower() + "_" + "mean"
-            max_field_str = eco_service.lower() + "_" + "max"
+            min_field_str = eco_service.lower().replace(" ", "-") + "_" + "min"
+            mean_field_str = eco_service.lower().replace(" ", "-") + "_" + "mean"
+            max_field_str = eco_service.lower().replace(" ", "-") + "_" + "max"
             stat_fields.append(QgsField(min_field_str))
             stat_fields.append(QgsField(mean_field_str))
             stat_fields.append(QgsField(max_field_str))
@@ -165,8 +170,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
 
         area_units_conversion_factor = 0.0001 #going from meters squared to hectares
 
-        # Calculate mins, maxs, and means for each unique combo of NLCD code and
-        # ecosystem service and append values to output table
+        # Fasfdasdaasdfasdfasdf asdf asfasd fasd
         for raster_summary_current, raster_summary_feature in enumerate(raster_summary_features):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
@@ -185,42 +189,20 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
             total_mean = 0
             total_max = 0
 
-            for field_index in stat_fields.allAttributesList():
-                es = stat_fields.field(field_index).name().split("_")
-                es_name = es[0].lower()
-                es_stat = es[1]
-
-                if es_name != "total":
-                    values_list = []
-                    esv_features = esv_source.getFeatures()
-
-                    for esv_feature in esv_features:
-                        if esv_feature.attributes()[0] == nlcd_code:
-                            if esv_feature.attributes()[2].lower() == es_name:
-                                values_list.append(float(esv_feature.attributes()[3]))
-
-                    values_array = np.asarray(values_list)
-
-                    if values_array.shape[0] > 0:
-                        if es_stat == "min":
-                            nlcd_min = float(area) * area_units_conversion_factor * float(np.amin(values_array))
-                            total_min = total_min + nlcd_min
-                            new_feature.setAttribute(field_index + 3, nlcd_min)
-                        elif es_stat == "mean":
-                            nlcd_mean = float(area) * area_units_conversion_factor * float(np.mean(values_array))
-                            total_mean = total_mean + nlcd_mean
-                            new_feature.setAttribute(field_index + 3, nlcd_mean)
-                        elif es_stat == "max":
-                            nlcd_max = float(area) * area_units_conversion_factor * float(np.amax(values_array))
-                            total_max = total_max + nlcd_max
-                            new_feature.setAttribute(field_index + 3, nlcd_max)
-                elif es_name == "total":
-                    if es_stat == "min":
-                        new_feature.setAttribute(field_index + 3, total_min)
-                    if es_stat == "mean":
-                        new_feature.setAttribute(field_index + 3, total_mean)
-                    if es_stat == "max":
-                        new_feature.setAttribute(field_index + 3, total_max)
+            for row in input_esv_table:
+                if row[0] == nlcd_code:
+                    input_es_name = row[1].lower().replace(" ", "-")
+                    for field_index in stat_fields.allAttributesList():
+                        output_es = stat_fields.field(field_index).name().split("_")
+                        output_es_name = output_es[0].lower()
+                        output_es_stat = output_es[1].lower()
+                        if input_es_name == output_es_name:
+                            if output_es_stat == "min":
+                                new_feature.setAttribute(field_index + 3, row[2])
+                            elif output_es_stat == "mean":
+                                new_feature.setAttribute(field_index + 3, row[3])
+                            if output_es_stat == "max":
+                                new_feature.setAttribute(field_index + 3, row[4])
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
