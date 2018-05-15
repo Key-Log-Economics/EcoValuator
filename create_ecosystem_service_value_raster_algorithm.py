@@ -177,7 +177,6 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             log("The table appears to include ESV stats columns. Check")
         else:
             feedback.reportError("One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 4 through the last column should all end with \"_min\", \"_mean\", or \"_max\".")
-            #feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
             log("")
             return result
 

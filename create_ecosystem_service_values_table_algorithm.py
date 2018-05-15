@@ -162,7 +162,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
 
         raster_summary_features = raster_summary_source.getFeatures()
 
-        area_units_conversion_factor = 0.0001
+        area_units_conversion_factor = 0.0001 #going from meters squared to hectares
 
         # Calculate mins, maxs, and means for each unique combo of NLCD code and
         # ecosystem service and append values to output table
