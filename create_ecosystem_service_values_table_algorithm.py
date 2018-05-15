@@ -29,6 +29,9 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 
 __revision__ = '$Format:%H$'
 
+import csv
+import os
+import sys
 import numpy as np
 from numpy import copy
 import processing
@@ -103,6 +106,13 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         raster_summary_source = self.parameterAsSource(parameters, self.INPUT_RASTER_SUMMARY, context)
         esv_source = self.parameterAsSource(parameters, self.INPUT_ESV, context)
 
+        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
+
+        with open(os.path.join(__location__, 'ESValuator_DataInputTool - ESVperHA.csv'), newline='') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                log(str(row))
+        '''
         esv_source_field_names = esv_source.fields().names()
         if len(esv_source_field_names) != 4:
             feedback.reportError("The ESV data table should have 4 columns, the one you input has " + str(len(esv_source_field_names)))
@@ -120,6 +130,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
             feedback.pushDebugInfo("Here is the list of all the possible NLCD codes: " + str(nlcd_codes))
             log("")
             return {self.OUTPUT_TABLE : ''}
+        '''
 
         # Create list of fields (i.e. column names) for the output CSV
         # Start with fields from the raster input csv
