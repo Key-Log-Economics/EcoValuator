@@ -193,7 +193,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
             try:
-                selected_esv = input_esv_table_feature.attribute(input_esv_field + "_" + input_esv_stat)
+                selected_esv = input_esv_table_feature.attribute(input_esv_field.replace(" ","-") + "_" + input_esv_stat)
             except KeyError:
                 feedback.reportError("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
