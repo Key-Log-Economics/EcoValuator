@@ -35,7 +35,9 @@ import processing
 
 from os.path import splitext
 
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import (QCoreApplication,
+                          QFileInfo
+                          )
 from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterFile,
@@ -46,7 +48,8 @@ from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFileDestination,
-                       QgsProcessingOutputLayerDefinition
+                       QgsProcessingOutputLayerDefinition,
+                       QgsRasterLayer
                        )
 
 from .parser import HTMLTableParser
@@ -96,6 +99,15 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         log = feedback.setProgressText
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
+
+        #raster_from_drive = QgsRasterLayer('https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing')
+        fileName = "https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing"
+        fileInfo = QFileInfo(fileName)
+        baseName = fileInfo.baseName()
+        rlayer = QgsRasterLayer(fileName, baseName)
+        if not rlayer.isValid():
+            print("Layer failed to load!")
+        #log("raster_from_drive height: " + str(raster_from_drive.height()))
 
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
