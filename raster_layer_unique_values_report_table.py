@@ -101,13 +101,15 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
 
         #raster_from_drive = QgsRasterLayer('https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing')
-        fileName = "https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing"
+        #fileName = "https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing"
+        fileName = "fasdf"
         fileInfo = QFileInfo(fileName)
         baseName = fileInfo.baseName()
         rlayer = QgsRasterLayer(fileName, baseName)
         if not rlayer.isValid():
             print("Layer failed to load!")
-        #log("raster_from_drive height: " + str(raster_from_drive.height()))
+        log("rlayer height: " + str(rlayer.height()))
+        log("rlayer rasterUnitsPerPixelX: " + str(rlayer.rasterUnitsPerPixelX()))
 
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
