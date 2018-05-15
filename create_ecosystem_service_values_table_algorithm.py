@@ -198,11 +198,24 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
                         output_es_stat = output_es[1].lower()
                         if input_es_name == output_es_name:
                             if output_es_stat == "min":
-                                new_feature.setAttribute(field_index + 3, float(row[2].replace(',','')) * float(area) * float(area_units_conversion_factor))
+                                nlcd_es_min = float(row[2].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                new_feature.setAttribute(field_index + 3, nlcd_es_min)
+                                total_min = total_min + nlcd_es_min
                             elif output_es_stat == "mean":
-                                new_feature.setAttribute(field_index + 3, float(row[3].replace(',','')) * float(area) * float(area_units_conversion_factor))
+                                nlcd_es_mean = float(row[3].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                new_feature.setAttribute(field_index + 3, nlcd_es_mean)
+                                total_mean = total_mean + nlcd_es_mean
                             if output_es_stat == "max":
-                                new_feature.setAttribute(field_index + 3, float(row[4].replace(',','')) * float(area) * float(area_units_conversion_factor))
+                                nlcd_es_max = float(row[4].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                new_feature.setAttribute(field_index + 3, nlcd_es_max)
+                                total_max = total_max + nlcd_es_max
+                        elif output_es_name == "total":
+                            if output_es_stat == "min":
+                                new_feature.setAttribute(field_index + 3, total_min)
+                            if output_es_stat == "mean":
+                                new_feature.setAttribute(field_index + 3, total_mean)
+                            if output_es_stat == "max":
+                                new_feature.setAttribute(field_index + 3, total_max)
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
