@@ -57,6 +57,9 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingOutputLayerDefinition,
                        QgsProcessingParameterEnum
                        )
+#https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+__esv_data_location__ = os.path.join(__location__, "esv_data")
 
 class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
@@ -65,10 +68,15 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_RASTER_SUMMARY = 'INPUT_RASTER_SUMMARY'
     INPUT_ESV = 'INPUT_ESV'
-    ESV_CSVS = ['a.csv', 'b.csv']
+
+    #Getting list of all CSVs in the esv_data directory
+    ESV_CSVS = []
+    for file in os.listdir(__esv_data_location__):   #https://stackoverflow.com/questions/3964681/find-all-files-in-a-directory-with-extension-txt-in-python?page=1&tab=votes#tab-top
+        if file.endswith(".csv"):
+            ESV_CSVS.append(file)
+            
     OUTPUT_TABLE = 'OUTPUT_TABLE'
     OUTPUT_TABLE_FILENAME_DEFAULT = 'Output ESV table'
-
 
     def initAlgorithm(self, config):
         """
@@ -109,9 +117,7 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
         input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
         input_esv = self.ESV_CSVS[input_esv_index]
 
-        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
-
-        with open(os.path.join(__location__, input_esv), newline='') as f:
+        with open(os.path.join(__esv_data_location__ , input_esv), newline='') as f:
             reader = csv.reader(f)
             for row in reader:
                 log(str(row))
