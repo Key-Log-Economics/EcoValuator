@@ -198,11 +198,11 @@ class CreateEcosystemServiceValuesTableAlgorithm(QgsProcessingAlgorithm):
                         output_es_stat = output_es[1].lower()
                         if input_es_name == output_es_name:
                             if output_es_stat == "min":
-                                new_feature.setAttribute(field_index + 3, row[2])
+                                new_feature.setAttribute(field_index + 3, float(row[2].replace(',','')) * float(area) * float(area_units_conversion_factor))
                             elif output_es_stat == "mean":
-                                new_feature.setAttribute(field_index + 3, row[3])
+                                new_feature.setAttribute(field_index + 3, float(row[3].replace(',','')) * float(area) * float(area_units_conversion_factor))
                             if output_es_stat == "max":
-                                new_feature.setAttribute(field_index + 3, row[4])
+                                new_feature.setAttribute(field_index + 3, float(row[4].replace(',','')) * float(area) * float(area_units_conversion_factor))
 
             # Add a feature in the sink
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
