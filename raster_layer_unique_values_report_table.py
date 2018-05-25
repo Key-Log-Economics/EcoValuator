@@ -29,6 +29,8 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 
 __revision__ = '$Format:%H$'
 
+import os
+import sys
 import numpy as np
 from numpy import copy
 import processing
@@ -49,17 +51,26 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFileDestination,
                        QgsProcessingOutputLayerDefinition,
-                       QgsRasterLayer
+                       QgsRasterLayer,
+                       QgsProcessingParameterEnum
                        )
 
 from .parser import HTMLTableParser
 
+#https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+__nlcd_data_location__ = os.path.join(__location__, "nlcd_data")
 
 class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
+    #Getting list of all .tif files in the nlcd_data directory
+    NLCD_TIFS = []
+    for file in os.listdir(__nlcd_data_location__):   #https://stackoverflow.com/questions/3964681/find-all-files-in-a-directory-with-extension-txt-in-python?page=1&tab=votes#tab-top
+        if file.endswith(".tif"):
+            NLCD_TIFS.append(file)
     HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
     OUTPUT_TABLE = 'OUTPUT_TABLE'
     OUTPUT_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
@@ -68,14 +79,21 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         """
         Here we define the inputs and output of the algorithm
         """
-
+        '''
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
                 self.tr('Input raster')
             )
         )
-
+        '''
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_RASTER,
+                self.tr('Input nlcd raster'),
+                self.NLCD_TIFS
+            )
+        )
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
@@ -97,19 +115,32 @@ class RasterLayerUniqueValuesReportTableAlgorithm(QgsProcessingAlgorithm):
         """
 
         log = feedback.setProgressText
-        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        input_nlcd_index = self.parameterAsEnum(parameters, self.INPUT_RASTER, context)
+        input_nlcd_file = self.NLCD_TIFS[input_nlcd_index]
+        input_nlcd_path = os.path.join(__nlcd_data_location__ , input_nlcd_file)
+        #input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
 
-        #raster_from_drive = QgsRasterLayer('https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing')
+        '''Trying to work with raster straight from Google drive
+        rlayer = QgsRasterLayer('https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing')
         #fileName = "https://drive.google.com/file/d/1kI4r5PYf2JhnUtU-l4dMdOeEqWKC0GEh/view?usp=sharing"
-        fileName = "fasdf"
-        fileInfo = QFileInfo(fileName)
-        baseName = fileInfo.baseName()
-        rlayer = QgsRasterLayer(fileName, baseName)
+        #fileName = "fasdf"
+        #fileInfo = QFileInfo(fileName)
+        #baseName = fileInfo.baseName()
+        #rlayer = QgsRasterLayer(fileName, baseName)
         if not rlayer.isValid():
-            print("Layer failed to load!")
+            log("Layer failed to load.")
         log("rlayer height: " + str(rlayer.height()))
         log("rlayer rasterUnitsPerPixelX: " + str(rlayer.rasterUnitsPerPixelX()))
+        '''
+
+        input_raster = QgsRasterLayer(input_nlcd_path)
+        if not input_raster.isValid():
+            log("Layer failed to load.")
+        #log("input_raster height: " + str(input_raster.height()))
+        #log("input_raster rasterUnitsPerPixelX: " + str(input_raster.rasterUnitsPerPixelX()))
+        #log("input_raster name: " + str(input_raster.name()))
+
 
         output_table_fields = QgsFields()
         output_table_fields.append(QgsField("value"))
