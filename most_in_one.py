@@ -30,12 +30,8 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 import os
-import sys
-import numpy as np
-from numpy import copy
+import csv
 import processing
-
-from os.path import splitext
 
 from PyQt5.QtCore import (QCoreApplication,
                           QFileInfo
@@ -62,6 +58,7 @@ from .parser import HTMLTableParser
 #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 __nlcd_data_location__ = os.path.join(__location__, "nlcd_data")
+__esv_data_location__ = os.path.join(__location__, "esv_data")
 
 class MostInOne(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
@@ -76,8 +73,16 @@ class MostInOne(QgsProcessingAlgorithm):
     MASK_LAYER = 'MASK_LAYER'
     CLIPPED_RASTER = 'CLIPPED_RASTER'
     HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
-    OUTPUT_TABLE = 'OUTPUT_TABLE'
-    OUTPUT_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
+    INPUT_ESV = 'INPUT_ESV'
+    #Getting list of all CSVs in the esv_data directory
+    ESV_CSVS = []
+    for file in os.listdir(__esv_data_location__):   #https://stackoverflow.com/questions/3964681/find-all-files-in-a-directory-with-extension-txt-in-python?page=1&tab=votes#tab-top
+        if file.endswith(".csv"):
+            ESV_CSVS.append(file)
+    OUTPUT_RASTER_SUMMARY_TABLE = 'OUTPUT_RASTER_SUMMARY_TABLE'
+    OUTPUT_RASTER_SUMMARY_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
+    OUTPUT_ESV_TABLE = 'OUTPUT_ESV_TABLE'
+    OUTPUT_ESV_TABLE_FILENAME_DEFAULT = 'Output esv table'
 
     def initAlgorithm(self, config):
         """
@@ -90,13 +95,19 @@ class MostInOne(QgsProcessingAlgorithm):
                 self.NLCD_TIFS
             )
         )
-
         # Input vector to be mask for raster
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.MASK_LAYER,
                 self.tr('Mask layer'),
                 [QgsProcessing.TypeVectorAnyGeometry]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_ESV,
+                self.tr('Input table of ESV research data'),
+                self.ESV_CSVS
             )
         )
         # Add a parameter for the clipped raster layer
@@ -113,12 +124,18 @@ class MostInOne(QgsProcessingAlgorithm):
                 self.tr('Place to save intermediate html file [optional]')
             )
         )
-
-        # Add a feature sink for the output data table
+        # Add a feature sink for the output raster summary data table
         self.addParameter(
             QgsProcessingParameterFeatureSink(
-                self.OUTPUT_TABLE,
-                self.tr(self.OUTPUT_TABLE_FILENAME_DEFAULT)
+                self.OUTPUT_RASTER_SUMMARY_TABLE,
+                self.tr(self.OUTPUT_RASTER_SUMMARY_TABLE_FILENAME_DEFAULT)
+            )
+        )
+        # Add a feature sink for the output esv data table
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT_ESV_TABLE,
+                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
             )
         )
 
@@ -154,11 +171,11 @@ class MostInOne(QgsProcessingAlgorithm):
             if parameters['OUTPUT_TABLE'][0:7] == "memory:":
                 parameters['OUTPUT_TABLE'] = parameters['OUTPUT_TABLE'].replace(" ", "_") + "-" + input_raster.name()
 
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_TABLE,
+        (raster_summary_sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_RASTER_SUMMARY_TABLE,
                 context,
                 output_table_fields)
 
-        result = {self.OUTPUT_TABLE : dest_id}
+        result = {self.OUTPUT_RASTER_SUMMARY_TABLE : dest_id}
 
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
         units_per_pixel_x = clipped_raster.rasterUnitsPerPixelX()
@@ -190,7 +207,47 @@ class MostInOne(QgsProcessingAlgorithm):
             for counter, td in enumerate(tr):
                 new_feature.setAttribute(counter, td)
             # Add a feature in the sink
-            sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+            raster_summary_sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+
+
+
+
+
+
+        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
+        input_esv_path = self.ESV_CSVS[input_esv_index]
+        input_esv_table = []
+        with open(os.path.join(__esv_data_location__ , input_esv_path), newline='') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                input_esv_table.append(row)
+
+        #change column names
+        input_esv_table[0][2] = "min"
+        input_esv_table[0][3] = "mean"
+        input_esv_table[0][4] = "max"
+
+        # Create list of fields (i.e. column names) for the output CSV
+        # Start with fields from the raster input csv
+        stat_fields = QgsFields()
+        # Then append new fields for the min, max, and mean of each unique
+        # ecosystem service (i.e. water, recreation, etc)
+        unique_eco_services = set([row[1] for row in input_esv_table[1:]])
+        for eco_service in unique_eco_services:
+            min_field_str = eco_service.lower().replace(" ", "-") + "_" + "min"
+            mean_field_str = eco_service.lower().replace(" ", "-") + "_" + "mean"
+            max_field_str = eco_service.lower().replace(" ", "-") + "_" + "max"
+            stat_fields.append(QgsField(min_field_str))
+            stat_fields.append(QgsField(mean_field_str))
+            stat_fields.append(QgsField(max_field_str))
+        # Then append three more columns for the totals
+        stat_fields.append(QgsField("total_min"))
+        stat_fields.append(QgsField("total_mean"))
+        stat_fields.append(QgsField("total_max"))
+
+        sink_fields = raster_summary_source.fields()
+        sink_fields.extend(stat_fields)
+
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
