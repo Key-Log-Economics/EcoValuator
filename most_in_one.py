@@ -145,75 +145,40 @@ class MostInOne(QgsProcessingAlgorithm):
         """
 
         log = feedback.setProgressText
+
+        #Get the input raster so I can do something with it
         input_nlcd_index = self.parameterAsEnum(parameters, self.INPUT_RASTER, context)
         input_nlcd_file = self.NLCD_TIFS[input_nlcd_index]
         input_nlcd_path = os.path.join(__nlcd_data_location__ , input_nlcd_file)
         input_raster = QgsRasterLayer(input_nlcd_path)
         if not input_raster.isValid():
             log("Layer failed to load.")
+
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
+        #Clip the input raster by the input mask layer (vector)
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':True, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
 
+        #Summarize the raster
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
-
-        output_table_fields = QgsFields()
-        output_table_fields.append(QgsField("value"))
-        output_table_fields.append(QgsField("pixel_count"))
-        output_table_fields.append(QgsField("area_m2"))
-
-        #Append input raster filename to end of output table filename
-        if isinstance(parameters['OUTPUT_TABLE'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name()
-            setattr(parameters['OUTPUT_TABLE'], 'destinationName', dest_name)
-        elif isinstance(parameters['OUTPUT_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
-            if parameters['OUTPUT_TABLE'][0:7] == "memory:":
-                parameters['OUTPUT_TABLE'] = parameters['OUTPUT_TABLE'].replace(" ", "_") + "-" + input_raster.name()
-
-        (raster_summary_sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_RASTER_SUMMARY_TABLE,
-                context,
-                output_table_fields)
-
-        result = {self.OUTPUT_RASTER_SUMMARY_TABLE : dest_id}
-
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
-        units_per_pixel_x = clipped_raster.rasterUnitsPerPixelX()
-        units_per_pixel_y = clipped_raster.rasterUnitsPerPixelY()
-        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
-            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
-                feedback.pushDebugInfo("Your input raster's pixels weren't exactly 30x30 meters, but were close enough that the program will continue running. Your input raster's pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
-            else:
-                feedback.reportError("The input raster should have 30x30 meter pixels. The one you input is " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
-                log("")
-                return result
-
         processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':clipped_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
+
+        #Process html output of rasterlayeruniquevaluesreport alg into a table so we can do stuff with it
         input_html = open(html_output_path, 'r', encoding='latin1')
         input_html_string = input_html.read()
-
         # instantiate the parser and then parse the table elements into a python list of lists
         # (per https://stackoverflow.com/questions/6325216/parse-html-table-to-python-list/22320207#22320207)
         p = HTMLTableParser()
         p.feed(input_html_string)
-        table_as_list_of_lists = p.tables[0]
+        raster_summary_table = p.tables[0]
+        #log("raster_summary_table: " + str(raster_summary_table))
+        #log("len(raster_summary_table): " + str(len(raster_summary_table)))
         # delete the header row
-        del table_as_list_of_lists[0]
+        del raster_summary_table[0]
 
-        #iterate through the list adding a new feature to the feature sink for every row
-        # and a new attribute for every data point
-        for tr in table_as_list_of_lists:
-            new_feature = QgsFeature(output_table_fields)
-            for counter, td in enumerate(tr):
-                new_feature.setAttribute(counter, td)
-            # Add a feature in the sink
-            raster_summary_sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
-
-
-
-
-
-
+        #Getting the input esv research data into a table so we can work with it
         input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
         input_esv_path = self.ESV_CSVS[input_esv_index]
         input_esv_table = []
@@ -221,33 +186,112 @@ class MostInOne(QgsProcessingAlgorithm):
             reader = csv.reader(f)
             for row in reader:
                 input_esv_table.append(row)
-
-        #change column names
+        #Change column names
         input_esv_table[0][2] = "min"
         input_esv_table[0][3] = "mean"
         input_esv_table[0][4] = "max"
 
-        # Create list of fields (i.e. column names) for the output CSV
-        # Start with fields from the raster input csv
-        stat_fields = QgsFields()
-        # Then append new fields for the min, max, and mean of each unique
+        # Create list of fields (i.e. column names) for the output esv table
+        output_esv_table_fields = QgsFields()
+        output_esv_table_fields.append(QgsField("value"))
+        output_esv_table_fields.append(QgsField("pixel_count"))
+        output_esv_table_fields.append(QgsField("area_m2"))
+        # Create fields for the min, max, and mean of each unique
         # ecosystem service (i.e. water, recreation, etc)
         unique_eco_services = set([row[1] for row in input_esv_table[1:]])
         for eco_service in unique_eco_services:
             min_field_str = eco_service.lower().replace(" ", "-") + "_" + "min"
             mean_field_str = eco_service.lower().replace(" ", "-") + "_" + "mean"
             max_field_str = eco_service.lower().replace(" ", "-") + "_" + "max"
-            stat_fields.append(QgsField(min_field_str))
-            stat_fields.append(QgsField(mean_field_str))
-            stat_fields.append(QgsField(max_field_str))
+            output_esv_table_fields.append(QgsField(min_field_str))
+            output_esv_table_fields.append(QgsField(mean_field_str))
+            output_esv_table_fields.append(QgsField(max_field_str))
         # Then append three more columns for the totals
-        stat_fields.append(QgsField("total_min"))
-        stat_fields.append(QgsField("total_mean"))
-        stat_fields.append(QgsField("total_max"))
+        output_esv_table_fields.append(QgsField("total_min"))
+        output_esv_table_fields.append(QgsField("total_mean"))
+        output_esv_table_fields.append(QgsField("total_max"))
 
-        sink_fields = raster_summary_source.fields()
-        sink_fields.extend(stat_fields)
+        # Create the feature sink for the output esv table, i.e. the place where we're going to start
+        # putting our output data. The 'dest_id' variable is used
+        # to uniquely identify the feature sink, and must be included in the
+        # dictionary returned by the processAlgorithm function.
+        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, output_esv_table_fields)
 
+        result = {self.OUTPUT_ESV_TABLE : dest_id}
+
+        # Compute the number of steps to display within the progress bar and
+        # get features from source
+        total = 100.0 / len(raster_summary_table) if len(raster_summary_table) else 0
+
+        #raster_summary_features = raster_summary_source.getFeatures()
+
+        area_units_conversion_factor = 0.0001 #going from meters squared to hectares
+
+        # Fasfdasdaasdfasdfasdf asdf asfasd fasd
+        for raster_summary_current, raster_summary_row in enumerate(raster_summary_table):
+            # Stop the algorithm if cancel button has been clicked
+            if feedback.isCanceled():
+                break
+
+            nlcd_code = raster_summary_row[0]
+            pixel_count = raster_summary_row[1]
+            area = raster_summary_row[2]
+
+            new_feature = QgsFeature(output_esv_table_fields)
+            new_feature.setAttribute(0, nlcd_code)
+            new_feature.setAttribute(1, pixel_count)
+            new_feature.setAttribute(2, area)
+
+            total_min = 0
+            total_mean = 0
+            total_max = 0
+
+            for row in input_esv_table:
+                if row[0] == nlcd_code:
+                    input_es_name = row[1].lower().replace(" ", "-")
+                    for field_index in output_esv_table_fields.allAttributesList():
+                        output_es = output_esv_table_fields.field(field_index).name().split("_")
+                        output_es_name = output_es[0].lower()
+                        if len(output_es) > 1:
+                            output_es_stat = output_es[1].lower()
+                            if input_es_name == output_es_name:
+                                if output_es_stat == "min":
+                                    nlcd_es_min = float(row[2].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    new_feature.setAttribute(field_index, nlcd_es_min)
+                                    total_min = total_min + nlcd_es_min
+                                elif output_es_stat == "mean":
+                                    nlcd_es_mean = float(row[3].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    new_feature.setAttribute(field_index, nlcd_es_mean)
+                                    total_mean = total_mean + nlcd_es_mean
+                                if output_es_stat == "max":
+                                    nlcd_es_max = float(row[4].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    new_feature.setAttribute(field_index, nlcd_es_max)
+                                    total_max = total_max + nlcd_es_max
+                            elif output_es_name == "total":
+                                if output_es_stat == "min":
+                                    new_feature.setAttribute(field_index, total_min)
+                                if output_es_stat == "mean":
+                                    new_feature.setAttribute(field_index, total_mean)
+                                if output_es_stat == "max":
+                                    new_feature.setAttribute(field_index, total_max)
+
+            # Add a feature in the sink
+            sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+
+            # Update the progress bar
+            feedback.setProgress(int(raster_summary_current * total))
+
+
+
+
+
+        #Append input raster filename to end of output esv table filename
+        if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
+            dest_name = self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name()
+            setattr(parameters['OUTPUT_ESV_TABLE'], 'destinationName', dest_name)
+        elif isinstance(parameters['OUTPUT_ESV_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
+            if parameters['OUTPUT_ESV_TABLE'][0:7] == "memory:":
+                parameters['OUTPUT_ESV_TABLE'] = parameters['OUTPUT_ESV_TABLE'].replace(" ", "_") + "-" + input_raster.name()
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
