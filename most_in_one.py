@@ -72,6 +72,7 @@ class MostInOne(QgsProcessingAlgorithm):
             NLCD_TIFS.append(file)
     MASK_LAYER = 'MASK_LAYER'
     CLIPPED_RASTER = 'CLIPPED_RASTER'
+    CLIPPED_RASTER_FILENAME_DEFAULT = 'Output clipped raster'
     HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
     INPUT_ESV = 'INPUT_ESV'
     #Getting list of all CSVs in the esv_data directory
@@ -124,13 +125,6 @@ class MostInOne(QgsProcessingAlgorithm):
                 self.tr('Place to save intermediate html file [optional]')
             )
         )
-        # Add a feature sink for the output raster summary data table
-        self.addParameter(
-            QgsProcessingParameterFeatureSink(
-                self.OUTPUT_RASTER_SUMMARY_TABLE,
-                self.tr(self.OUTPUT_RASTER_SUMMARY_TABLE_FILENAME_DEFAULT)
-            )
-        )
         # Add a feature sink for the output esv data table
         self.addParameter(
             QgsProcessingParameterFeatureSink(
@@ -143,10 +137,9 @@ class MostInOne(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-
         log = feedback.setProgressText
 
-        #Get the input raster so I can do something with it
+        #Get the input raster so I can do stuff with it
         input_nlcd_index = self.parameterAsEnum(parameters, self.INPUT_RASTER, context)
         input_nlcd_file = self.NLCD_TIFS[input_nlcd_index]
         input_nlcd_path = os.path.join(__nlcd_data_location__ , input_nlcd_file)
@@ -155,6 +148,15 @@ class MostInOne(QgsProcessingAlgorithm):
             log("Layer failed to load.")
 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
+
+        #Append input raster and input vector filenames to end of output clipped raster filename
+        if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
+            dest_name = self.CLIPPED_RASTER_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_nlcd_file.split(".")[0] + ":clipped_by:" + input_vector.name()
+            setattr(parameters['CLIPPED_RASTER'], 'destinationName', dest_name)
+        elif isinstance(parameters['CLIPPED_RASTER'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
+            if parameters['CLIPPED_RASTER'][0:7] == "memory:":
+                parameters['CLIPPED_RASTER'] = self.CLIPPED_RASTER_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_nlcd_file.split(".")[0] + ":clipped_by:" + input_vector.name()
+
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
         #Clip the input raster by the input mask layer (vector)
@@ -173,16 +175,13 @@ class MostInOne(QgsProcessingAlgorithm):
         p = HTMLTableParser()
         p.feed(input_html_string)
         raster_summary_table = p.tables[0]
-        #log("raster_summary_table: " + str(raster_summary_table))
-        #log("len(raster_summary_table): " + str(len(raster_summary_table)))
-        # delete the header row
-        del raster_summary_table[0]
+        del raster_summary_table[0]  #delete the header row
 
         #Getting the input esv research data into a table so we can work with it
         input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
-        input_esv_path = self.ESV_CSVS[input_esv_index]
+        input_esv_file = self.ESV_CSVS[input_esv_index]
         input_esv_table = []
-        with open(os.path.join(__esv_data_location__ , input_esv_path), newline='') as f:
+        with open(os.path.join(__esv_data_location__ , input_esv_file), newline='') as f:
             reader = csv.reader(f)
             for row in reader:
                 input_esv_table.append(row)
@@ -211,6 +210,14 @@ class MostInOne(QgsProcessingAlgorithm):
         output_esv_table_fields.append(QgsField("total_mean"))
         output_esv_table_fields.append(QgsField("total_max"))
 
+        #Append input raster filename to end of output esv table filename
+        if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
+            dest_name = self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_esv_file.split(".")[0] + ":" + parameters['CLIPPED_RASTER'].destinationName
+            setattr(parameters['OUTPUT_ESV_TABLE'], 'destinationName', dest_name)
+        elif isinstance(parameters['OUTPUT_ESV_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
+            if parameters['OUTPUT_ESV_TABLE'][0:7] == "memory:":
+                parameters['OUTPUT_ESV_TABLE'] = parameters['OUTPUT_ESV_TABLE'].replace(" ", "_") + ":" + input_esv_file.split(".")[0] + ":" + parameters['CLIPPED_RASTER'].destinationName
+
         # Create the feature sink for the output esv table, i.e. the place where we're going to start
         # putting our output data. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
@@ -219,11 +226,8 @@ class MostInOne(QgsProcessingAlgorithm):
 
         result = {self.OUTPUT_ESV_TABLE : dest_id}
 
-        # Compute the number of steps to display within the progress bar and
-        # get features from source
+        # Compute the number of steps to display within the progress bar
         total = 100.0 / len(raster_summary_table) if len(raster_summary_table) else 0
-
-        #raster_summary_features = raster_summary_source.getFeatures()
 
         area_units_conversion_factor = 0.0001 #going from meters squared to hectares
 
@@ -280,18 +284,6 @@ class MostInOne(QgsProcessingAlgorithm):
 
             # Update the progress bar
             feedback.setProgress(int(raster_summary_current * total))
-
-
-
-
-
-        #Append input raster filename to end of output esv table filename
-        if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_raster.name()
-            setattr(parameters['OUTPUT_ESV_TABLE'], 'destinationName', dest_name)
-        elif isinstance(parameters['OUTPUT_ESV_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
-            if parameters['OUTPUT_ESV_TABLE'][0:7] == "memory:":
-                parameters['OUTPUT_ESV_TABLE'] = parameters['OUTPUT_ESV_TABLE'].replace(" ", "_") + "-" + input_raster.name()
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
