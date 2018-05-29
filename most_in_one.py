@@ -90,10 +90,12 @@ class MostInOne(QgsProcessingAlgorithm):
         Here we define the inputs and output of the algorithm
         """
         self.addParameter(
-            QgsProcessingParameterEnum(
+            QgsProcessingParameterFile(
                 self.INPUT_RASTER,
                 self.tr('Input nlcd raster'),
-                self.NLCD_TIFS
+                QgsProcessingParameterFile.File,
+                '',
+                self.NLCD_TIFS[0]
             )
         )
         # Input vector to be mask for raster
@@ -140,8 +142,7 @@ class MostInOne(QgsProcessingAlgorithm):
         log = feedback.setProgressText
 
         #Get the input raster so I can do stuff with it
-        input_nlcd_index = self.parameterAsEnum(parameters, self.INPUT_RASTER, context)
-        input_nlcd_file = self.NLCD_TIFS[input_nlcd_index]
+        input_nlcd_file = self.parameterAsFile(parameters, self.INPUT_RASTER, context)
         input_nlcd_path = os.path.join(__nlcd_data_location__ , input_nlcd_file)
         input_raster = QgsRasterLayer(input_nlcd_path)
         if not input_raster.isValid():
