@@ -152,11 +152,11 @@ class MostInOne(QgsProcessingAlgorithm):
 
         #Append input raster and input vector filenames to end of output clipped raster filename
         if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.CLIPPED_RASTER_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_nlcd_file.split(".")[0] + ":clipped_by:" + input_vector.name()
+            dest_name = input_nlcd_file.split("/")[-1].split(".")[0] + "-CLIPPED_BY-" + input_vector.name()
             setattr(parameters['CLIPPED_RASTER'], 'destinationName', dest_name)
         elif isinstance(parameters['CLIPPED_RASTER'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
             if parameters['CLIPPED_RASTER'][0:7] == "memory:":
-                parameters['CLIPPED_RASTER'] = self.CLIPPED_RASTER_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_nlcd_file.split(".")[0] + ":clipped_by:" + input_vector.name()
+                parameters['CLIPPED_RASTER'] = input_nlcd_file.split(".")[0] + "-CLIPPED_BY-" + input_vector.name()
 
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
@@ -213,11 +213,11 @@ class MostInOne(QgsProcessingAlgorithm):
 
         #Append input raster filename to end of output esv table filename
         if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT.replace(" ", "_") + ":" + input_esv_file.split(".")[0] + ":" + parameters['CLIPPED_RASTER'].destinationName
+            dest_name = self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_esv_file.split(".")[0] + "-" + parameters['CLIPPED_RASTER'].destinationName
             setattr(parameters['OUTPUT_ESV_TABLE'], 'destinationName', dest_name)
         elif isinstance(parameters['OUTPUT_ESV_TABLE'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
             if parameters['OUTPUT_ESV_TABLE'][0:7] == "memory:":
-                parameters['OUTPUT_ESV_TABLE'] = parameters['OUTPUT_ESV_TABLE'].replace(" ", "_") + ":" + input_esv_file.split(".")[0] + ":" + parameters['CLIPPED_RASTER'].destinationName
+                parameters['OUTPUT_ESV_TABLE'] = parameters['OUTPUT_ESV_TABLE'].replace(" ", "_") + "-" + input_esv_file.split(".")[0] + "-" + parameters['CLIPPED_RASTER'].destinationName
 
         # Create the feature sink for the output esv table, i.e. the place where we're going to start
         # putting our output data. The 'dest_id' variable is used

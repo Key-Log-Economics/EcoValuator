@@ -30,9 +30,7 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
-from .create_ecosystem_service_values_table_algorithm import CreateEcosystemServiceValuesTableAlgorithm
 from .create_ecosystem_service_value_raster_algorithm import CreateEcosystemServiceValueRasterAlgorithm
-from .raster_layer_unique_values_report_table import RasterLayerUniqueValuesReportTableAlgorithm
 from .most_in_one import MostInOne
 
 
@@ -42,7 +40,7 @@ class EcosystemServiceValuatorProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [CreateEcosystemServiceValuesTableAlgorithm(), CreateEcosystemServiceValueRasterAlgorithm(), RasterLayerUniqueValuesReportTableAlgorithm(), MostInOne()]
+        self.alglist = [CreateEcosystemServiceValueRasterAlgorithm(), MostInOne()]
 
     def unload(self):
         """
