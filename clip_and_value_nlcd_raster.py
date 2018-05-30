@@ -144,7 +144,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         #Check that the input raster is in the right CRS
         input_raster_crs = input_raster.crs().authid()
         if input_raster_crs != "EPSG:102003":
-            error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. Your's was in " + str(input_raster_crs) + "."
+            error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_raster_crs) + "."
             feedback.reportError(error_message)
             log("")
             return {'error': error_message}

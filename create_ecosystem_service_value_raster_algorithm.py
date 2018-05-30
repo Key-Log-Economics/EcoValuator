@@ -144,21 +144,31 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         #Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_esv_field + "_" + input_esv_stat + "_" + input_raster.name() 
+            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_esv_field + "_" + input_esv_stat + "_" + input_raster.name()
             setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = { self.OUTPUT_RASTER : output_raster_destination }
 
+        #Check that the input raster is in the right CRS
+        input_raster_crs = input_raster.crs().authid()
+        if input_raster_crs != "EPSG:102003":
+            error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_raster_crs) + "."
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
+
+        #Check that the input raster has the right pixel size
         units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
         units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
         if units_per_pixel_x != 30 or units_per_pixel_y != 30:
             if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
                 feedback.pushDebugInfo("Your input raster pixels weren't exactly 30x30 meters, but were close enough that the program will continue to run. Your input raster pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
             else:
-                feedback.reportError("The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+                error_message = "The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + "."
+                feedback.reportError(error_message)
                 log("")
-                return result
+                return {'error': error_message}
 
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
