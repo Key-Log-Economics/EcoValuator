@@ -176,6 +176,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
+        #Check to make sure the input ESV table has at least 4 columns
         input_esv_table_col_names = input_esv_table.fields().names()
         if len(input_esv_table_col_names) <= 3:
             feedback.reportError("The Input ESV table should have at least 4 columns, the one you input only has " + str(len(input_esv_table_col_names)))
@@ -184,6 +185,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         else:
             log("Input ESV table has at least 4 columns. Check")
 
+        #Check to make sure the input ESV table appears to have columns with ESV stats
         stats = ['min','mean','max']
         input_esv_table_esv_stat_col_names = input_esv_table_col_names[3:]
         input_esv_table_name_stats = [i.split('_', 1)[1] for i in input_esv_table_esv_stat_col_names]
@@ -204,8 +206,16 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         input_esv_table_features = input_esv_table.getFeatures()
 
+        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
+
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
+            #Check to make sure this is a legit nlcd code. If it's not throw and error and abort the alg
+            if nlcd_code not in nlcd_codes:
+                error_message = "Found a value in the first column of the input ESV table that isn't a legitimate NLCD code: " + str(nlcd_code) + ". All the values in the first column of the input ESV table must be one of these: " + str(nlcd_codes)
+                feedback.reportError(error_message)
+                log("")
+                return {'error': error_message}
             try:
                 selected_esv = input_esv_table_feature.attribute(input_esv_field.replace(" ","-") + "_" + input_esv_stat)
             except KeyError:
