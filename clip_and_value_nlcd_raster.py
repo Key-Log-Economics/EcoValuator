@@ -143,7 +143,9 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         #Check that the input raster is in the right CRS
         input_raster_crs = input_raster.crs().authid()
-        if input_raster_crs != "EPSG:102003":
+        if input_raster_crs == "EPSG:102003":
+            log("The input raster is in the right CRS: EPSG:102003. Check")
+        else:
             error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_raster_crs) + "."
             feedback.reportError(error_message)
             log("")
@@ -160,6 +162,8 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
                 feedback.reportError(error_message)
                 log("")
                 return {'error': error_message}
+        else:
+            log("The input raster's pixel size is correct: 30x30. Check")
 
 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
@@ -174,15 +178,19 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
+        log("Clipping raster...")
         #Clip the input raster by the input mask layer (vector)
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':True, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
+        log("Done clipping raster.")
 
-
+        log("Summarizing raster...")
         #Summarize the raster
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
         processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':clipped_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
+        log("Done summarizing raster.")
 
+        log("Calculating ecosystem service values for clipped raster...")
         #Process html output of rasterlayeruniquevaluesreport alg into a table so we can do stuff with it
         input_html = open(html_output_path, 'r', encoding='latin1')
         input_html_string = input_html.read()
@@ -312,6 +320,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
             # Update the progress bar
             feedback.setProgress(int(raster_summary_current * total))
+        log("Done calculating ecosystem service values for clipped raster.")
 
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
