@@ -177,6 +177,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         #Clip the input raster by the input mask layer (vector)
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':True, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
 
+
         #Summarize the raster
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
@@ -191,6 +192,17 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         p.feed(input_html_string)
         raster_summary_table = p.tables[0]
         del raster_summary_table[0]  #delete the header row
+
+        #Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+        raster_summary_table_column_1_values = [row[0] for row in raster_summary_table]
+        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
+        if all(str(i) in nlcd_codes for i in raster_summary_table_column_1_values):
+            log("The input raster has the correct NLCD codes for pixel values. Check")
+        else:
+            error_message = "The input raster's pixels aren't all legitimate NLCD codes. They must all be one of these values: " + str(nlcd_codes) + ". The raster you input had these values: " + str(raster_summary_table_column_1_values)
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
 
         #Getting the input esv research data into a table so we can work with it
         input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
