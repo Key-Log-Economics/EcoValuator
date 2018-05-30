@@ -168,6 +168,15 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
 
+        #Check that the input vector is in the right CRS
+        input_vector_crs = input_vector.crs().authid()
+        if input_vector_crs == "EPSG:102003":
+            log("The input mask layer is in the right CRS: EPSG:102003. Check")
+        else:
+            error_message = "The input mask layer isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_vector_crs) + "."
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
 
         #Get the input table of esv research data into a list of lists so we can work with it
         input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
