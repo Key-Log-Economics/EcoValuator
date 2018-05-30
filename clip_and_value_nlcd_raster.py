@@ -133,10 +133,34 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         """
         log = feedback.setProgressText
 
-        #Get the input raster so I can do stuff with it
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+
+        #Check that the input raster has been loaded correctly
         if not input_raster.isValid():
-            log("Layer failed to load.")
+            error_message = "Layer failed to load."
+            feedback.reportError(error_message)
+            return {'error': error_message}
+
+        #Check that the input raster is in the right CRS
+        input_raster_crs = input_raster.crs().authid()
+        if input_raster_crs != "EPSG:102003":
+            error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. Your's was in " + str(input_raster_crs) + "."
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
+
+        #Check that the input raster has the right pixel size
+        units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
+        units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
+        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
+            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
+                feedback.pushDebugInfo("Your input raster pixels weren't exactly 30x30 meters, but were close enough that the program will continue to run. Your input raster pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
+            else:
+                error_message = "The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + "."
+                feedback.reportError(error_message)
+                log("")
+                return {'error': error_message}
+
 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
 
@@ -215,7 +239,8 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         # dictionary returned by the processAlgorithm function.
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, output_esv_table_fields)
 
-        result = {self.OUTPUT_ESV_TABLE : dest_id}
+        result = {self.CLIPPED_RASTER : clipped_raster_destination,
+                  self.OUTPUT_ESV_TABLE : dest_id}
 
         # Compute the number of steps to display within the progress bar
         total = 100.0 / len(raster_summary_table) if len(raster_summary_table) else 0
