@@ -60,16 +60,11 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 __nlcd_data_location__ = os.path.join(__location__, "nlcd_data")
 __esv_data_location__ = os.path.join(__location__, "esv_data")
 
-class MostInOne(QgsProcessingAlgorithm):
+class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
-    #Getting list of all .tif files in the nlcd_data directory
-    NLCD_TIFS = []
-    for file in os.listdir(__nlcd_data_location__):   #https://stackoverflow.com/questions/3964681/find-all-files-in-a-directory-with-extension-txt-in-python?page=1&tab=votes#tab-top
-        if file.endswith(".tif"):
-            NLCD_TIFS.append(file)
     MASK_LAYER = 'MASK_LAYER'
     CLIPPED_RASTER = 'CLIPPED_RASTER'
     CLIPPED_RASTER_FILENAME_DEFAULT = 'Output clipped raster'
@@ -90,12 +85,9 @@ class MostInOne(QgsProcessingAlgorithm):
         Here we define the inputs and output of the algorithm
         """
         self.addParameter(
-            QgsProcessingParameterFile(
+            QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
-                self.tr('Input nlcd raster'),
-                QgsProcessingParameterFile.File,
-                '',
-                self.NLCD_TIFS[0]
+                self.tr('Input NLCD raster')
             )
         )
         # Input vector to be mask for raster
@@ -142,9 +134,7 @@ class MostInOne(QgsProcessingAlgorithm):
         log = feedback.setProgressText
 
         #Get the input raster so I can do stuff with it
-        input_nlcd_file = self.parameterAsFile(parameters, self.INPUT_RASTER, context)
-        input_nlcd_path = os.path.join(__nlcd_data_location__ , input_nlcd_file)
-        input_raster = QgsRasterLayer(input_nlcd_path)
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         if not input_raster.isValid():
             log("Layer failed to load.")
 
@@ -152,11 +142,11 @@ class MostInOne(QgsProcessingAlgorithm):
 
         #Append input raster and input vector filenames to end of output clipped raster filename
         if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = input_nlcd_file.split("/")[-1].split(".")[0] + "-CLIPPED_BY-" + input_vector.name()
+            dest_name = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
             setattr(parameters['CLIPPED_RASTER'], 'destinationName', dest_name)
         elif isinstance(parameters['CLIPPED_RASTER'], str): #for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
             if parameters['CLIPPED_RASTER'][0:7] == "memory:":
-                parameters['CLIPPED_RASTER'] = input_nlcd_file.split(".")[0] + "-CLIPPED_BY-" + input_vector.name()
+                parameters['CLIPPED_RASTER'] = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
 
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
@@ -302,7 +292,7 @@ class MostInOne(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Most in one'
+        return 'Clip and value NLCD raster'
 
     def displayName(self):
         """
@@ -340,4 +330,4 @@ class MostInOne(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return MostInOne()
+        return ClipAndValueNLCDRaster()
