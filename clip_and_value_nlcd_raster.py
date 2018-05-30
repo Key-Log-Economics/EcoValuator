@@ -168,6 +168,37 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
 
+
+        #Get the input table of esv research data into a list of lists so we can work with it
+        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
+        input_esv_file = self.ESV_CSVS[input_esv_index]
+        input_esv_table = []
+        with open(os.path.join(__esv_data_location__ , input_esv_file), newline='') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                input_esv_table.append(row)
+
+        #Check to make sure the input table of esv research data has 5 columns
+        if len(input_esv_table[0]) != 5:
+            error_message = "The Input table of ESV research data should have 5 columns, the one you input has " + str(len(input_esv_table[0]))
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
+        else:
+            log("Input table of ESV research data has 5 columns. Check")
+
+        #Check to make sure the input table of esv research data has NLCD codes in its first column
+        input_esv_table_column_1_values = [row[0] for row in input_esv_table]
+        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
+        if all(str(i) in nlcd_codes for i in input_esv_table_column_1_values[1:]):
+            log("The input input table of esv research data has the correct NLCD codes in the first column. Check")
+        else:
+            error_message = "The first column of the input table of esv research data isn't all legitimate NLCD codes. They must all be one of these values: " + str(nlcd_codes) + ". The table you input had these values: " + str(input_esv_table_column_1_values[1:])
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
+
+
         #Append input raster and input vector filenames to end of output clipped raster filename
         if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
             dest_name = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
@@ -178,13 +209,13 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
 
-        log("Clipping raster...")
         #Clip the input raster by the input mask layer (vector)
+        log("Clipping raster...")
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':True, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
         log("Done clipping raster.")
 
+        #Summarize the raster, i.e. calculate the pixel counts and total area for each NLCD value
         log("Summarizing raster...")
-        #Summarize the raster
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
         processing.run("native:rasterlayeruniquevaluesreport", {'INPUT':clipped_raster, 'BAND': 1, 'OUTPUT_HTML_FILE': html_output_path}, context=context, feedback=feedback)
@@ -203,7 +234,6 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         #Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
         raster_summary_table_column_1_values = [row[0] for row in raster_summary_table]
-        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
         if all(str(i) in nlcd_codes for i in raster_summary_table_column_1_values):
             log("The input raster has the correct NLCD codes for pixel values. Check")
         else:
@@ -211,19 +241,6 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
             feedback.reportError(error_message)
             log("")
             return {'error': error_message}
-
-        #Getting the input esv research data into a table so we can work with it
-        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
-        input_esv_file = self.ESV_CSVS[input_esv_index]
-        input_esv_table = []
-        with open(os.path.join(__esv_data_location__ , input_esv_file), newline='') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                input_esv_table.append(row)
-        #Change column names
-        input_esv_table[0][2] = "min"
-        input_esv_table[0][3] = "mean"
-        input_esv_table[0][4] = "max"
 
         # Create list of fields (i.e. column names) for the output esv table
         output_esv_table_fields = QgsFields()
