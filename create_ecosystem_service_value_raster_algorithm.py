@@ -238,10 +238,19 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
                 selected_esv = int(selected_esv) / 0.0001 / int(num_pixels)
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
-        # Output raster
+        #Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
         log(self.tr("Reading input raster into numpy array ..."))
-        #use isValid() somewhere in here to make sure the incoming raster layer is valid
         grid = Raster.to_numpy(input_raster, band=1, dtype=int)
+        #Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+        unique_pixel_values_of_input_raster = np.unique(grid)
+        nlcd_codes.append(str(input_nodata_value))
+        if all(str(i) in nlcd_codes for i in unique_pixel_values_of_input_raster):
+            log("The input raster has the correct NLCD codes for pixel values. Check")
+        else:
+            error_message = "The input raster's pixels aren't all legitimate NLCD codes. They must all be one of these values: " + str(nlcd_codes) + ". The raster you input had these values: " + str(unique_pixel_values_of_input_raster)
+            feedback.reportError(error_message)
+            log("")
+            return {'error': error_message}
         log(self.tr("Array read"))
         log(self.tr("Mapping values"))
         output_array = copy(grid)
