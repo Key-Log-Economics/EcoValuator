@@ -152,7 +152,9 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         #Check that the input raster is in the right CRS
         input_raster_crs = input_raster.crs().authid()
-        if input_raster_crs != "EPSG:102003":
+        if input_raster_crs == "EPSG:102003":
+            log("The input raster is in the right CRS: EPSG:102003. Check")
+        else:
             error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_raster_crs) + "."
             feedback.reportError(error_message)
             log("")
@@ -169,6 +171,8 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
                 feedback.reportError(error_message)
                 log("")
                 return {'error': error_message}
+        else:
+            log("The input raster's pixel size is correct: 30x30. Check")
 
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
