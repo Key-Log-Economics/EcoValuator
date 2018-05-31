@@ -78,7 +78,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
     OUTPUT_RASTER_SUMMARY_TABLE = 'OUTPUT_RASTER_SUMMARY_TABLE'
     OUTPUT_RASTER_SUMMARY_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
     OUTPUT_ESV_TABLE = 'OUTPUT_ESV_TABLE'
-    OUTPUT_ESV_TABLE_FILENAME_DEFAULT = 'Output esv table'
+    OUTPUT_ESV_TABLE_FILENAME_DEFAULT = 'Output ESV table'
 
     def initAlgorithm(self, config):
         """
@@ -116,7 +116,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
-                self.tr('Place to save intermediate html file [optional]')
+                self.tr('Place to save intermediate html file')
             )
         )
         # Add a feature sink for the output esv data table

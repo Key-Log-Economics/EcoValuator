@@ -144,7 +144,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         #Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "_" + input_esv_field + "_" + input_esv_stat + "_" + input_raster.name()
+            dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_esv_field.replace(" ", "_") + "_" + input_esv_stat + "-" + input_raster.name()
             setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
