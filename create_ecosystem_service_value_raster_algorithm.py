@@ -178,16 +178,16 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         #Check to make sure the input ESV table has at least 4 columns
         input_esv_table_col_names = input_esv_table.fields().names()
-        if len(input_esv_table_col_names) <= 3:
-            feedback.reportError("The Input ESV table should have at least 4 columns, the one you input only has " + str(len(input_esv_table_col_names)))
+        if len(input_esv_table_col_names) <= 4:
+            feedback.reportError("The Input ESV table should have at least 5 columns, the one you input only has " + str(len(input_esv_table_col_names)))
             log("")
             return result
         else:
-            log("Input ESV table has at least 4 columns. Check")
+            log("Input ESV table has at least 5 columns. Check")
 
         #Check to make sure the input ESV table appears to have columns with ESV stats
         stats = ['min','mean','max']
-        input_esv_table_esv_stat_col_names = input_esv_table_col_names[3:]
+        input_esv_table_esv_stat_col_names = input_esv_table_col_names[4:]
         input_esv_table_name_stats = [i.split('_', 1)[1] for i in input_esv_table_esv_stat_col_names]
         if all(str(i) in stats for i in input_esv_table_name_stats):
             log("The table appears to include ESV stats columns. Check")
@@ -220,7 +220,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
                 selected_esv = input_esv_table_feature.attribute(input_esv_field.replace(" ","-") + "_" + input_esv_stat)
             except KeyError:
                 feedback.reportError("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
-                feedback.pushDebugInfo(str(input_esv_table.fields().names()[3:]))
+                feedback.pushDebugInfo(str(input_esv_table.fields().names()[4:]))
                 log("")
                 return result
             #If there is no ESV for tis particular NLCD-ES combo Then
@@ -234,7 +234,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             # the whole area covered by that land cover (which is in USD/hectare)
             # to the per pixel ESV (USD/pixel)
             else:
-                num_pixels = input_esv_table_feature.attributes()[1]
+                num_pixels = input_esv_table_feature.attributes()[2]
                 selected_esv = int(selected_esv) / 0.0001 / int(num_pixels)
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
