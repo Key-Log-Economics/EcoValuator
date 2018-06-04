@@ -364,7 +364,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Clip and value NLCD raster'
+        return 'Step 1: Clip and value NLCD raster'
 
     def displayName(self):
         """

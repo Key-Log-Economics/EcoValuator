@@ -279,7 +279,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Create ESV raster'
+        return 'Step 2: Create ESV raster'
 
     def displayName(self):
         """
