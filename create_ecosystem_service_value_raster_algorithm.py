@@ -188,11 +188,18 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         #Check to make sure the input ESV table appears to have columns with ESV stats
         stats = ['min','mean','max']
         input_esv_table_esv_stat_col_names = input_esv_table_col_names[4:]
-        input_esv_table_name_stats = [i.split('_', 1)[1] for i in input_esv_table_esv_stat_col_names]
+        input_esv_table_name_stats = []
+        for name in input_esv_table_esv_stat_col_names:
+            if len(name.split('_', 1)) > 1:
+                input_esv_table_name_stats.append(name.split('_', 1)[1])
+            else:
+                feedback.reportError("One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 5 through the last column should all have an underscore between the ecosystem service and the statistic, e.g. aesthetic_min.")
+                log("")
+                return result
         if all(str(i) in stats for i in input_esv_table_name_stats):
             log("The table appears to include ESV stats columns. Check")
         else:
-            feedback.reportError("One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 4 through the last column should all end with \"_min\", \"_mean\", or \"_max\".")
+            feedback.reportError("One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 5 through the last column should all end with \"_min\", \"_mean\", or \"_max\".")
             log("")
             return result
 
