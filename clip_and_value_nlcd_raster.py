@@ -253,7 +253,8 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
         # Create list of fields (i.e. column names) for the output esv table
         output_esv_table_fields = QgsFields()
-        output_esv_table_fields.append(QgsField("value"))
+        output_esv_table_fields.append(QgsField("nlcd_code"))
+        output_esv_table_fields.append(QgsField("nlcd_value"))
         output_esv_table_fields.append(QgsField("pixel_count"))
         output_esv_table_fields.append(QgsField("area_m2"))
         # Create fields for the min, max, and mean of each unique
@@ -305,8 +306,8 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
             new_feature = QgsFeature(output_esv_table_fields)
             new_feature.setAttribute(0, nlcd_code)
-            new_feature.setAttribute(1, pixel_count)
-            new_feature.setAttribute(2, area)
+            new_feature.setAttribute(2, pixel_count)
+            new_feature.setAttribute(3, area)
 
             total_min = 0
             total_mean = 0
