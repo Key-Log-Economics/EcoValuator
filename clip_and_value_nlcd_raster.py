@@ -323,15 +323,15 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
                             output_es_stat = output_es[1].lower()
                             if input_es_name == output_es_name:
                                 if output_es_stat == "min":
-                                    nlcd_es_min = float(row[2].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_min = int(float(row[2].replace(',',''))*float(area)*float(area_units_conversion_factor))
                                     new_feature.setAttribute(field_index, nlcd_es_min)
                                     total_min = total_min + nlcd_es_min
                                 elif output_es_stat == "mean":
-                                    nlcd_es_mean = float(row[3].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_mean = int(float(row[3].replace(',',''))*float(area)*float(area_units_conversion_factor))
                                     new_feature.setAttribute(field_index, nlcd_es_mean)
                                     total_mean = total_mean + nlcd_es_mean
                                 if output_es_stat == "max":
-                                    nlcd_es_max = float(row[4].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_max = int(float(row[4].replace(',',''))*float(area)*float(area_units_conversion_factor))
                                     new_feature.setAttribute(field_index, nlcd_es_max)
                                     total_max = total_max + nlcd_es_max
                             elif output_es_name == "total":
