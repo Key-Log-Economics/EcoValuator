@@ -187,14 +187,14 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
             for row in reader:
                 input_esv_table.append(row)
 
-        #Check to make sure the input table of esv research data has 5 columns
-        if len(input_esv_table[0]) != 5:
-            error_message = "The Input table of ESV research data should have 5 columns, the one you input has " + str(len(input_esv_table[0]))
+        #Check to make sure the input table of esv research data has 6 columns
+        if len(input_esv_table[0]) != 6:
+            error_message = "The Input table of ESV research data should have 6 columns, the one you input has " + str(len(input_esv_table[0]))
             feedback.reportError(error_message)
             log("")
             return {'error': error_message}
         else:
-            log("Input table of ESV research data has 5 columns. Check")
+            log("Input table of ESV research data has 6 columns. Check")
 
         #Check to make sure the input table of esv research data has NLCD codes in its first column
         input_esv_table_column_1_values = [row[0] for row in input_esv_table]
@@ -259,7 +259,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         output_esv_table_fields.append(QgsField("area_m2"))
         # Create fields for the min, max, and mean of each unique
         # ecosystem service (i.e. water, recreation, etc)
-        unique_eco_services = set([row[1] for row in input_esv_table[1:]])
+        unique_eco_services = set([row[2] for row in input_esv_table[1:]])
         for eco_service in unique_eco_services:
             min_field_str = eco_service.lower().replace(" ", "-") + "_" + "min"
             mean_field_str = eco_service.lower().replace(" ", "-") + "_" + "mean"
@@ -315,7 +315,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
             for row in input_esv_table:
                 if row[0] == nlcd_code:
-                    input_es_name = row[1].lower().replace(" ", "-")
+                    input_es_name = row[2].lower().replace(" ", "-")
                     for field_index in output_esv_table_fields.allAttributesList():
                         output_es = output_esv_table_fields.field(field_index).name().split("_")
                         output_es_name = output_es[0].lower()
@@ -323,15 +323,15 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
                             output_es_stat = output_es[1].lower()
                             if input_es_name == output_es_name:
                                 if output_es_stat == "min":
-                                    nlcd_es_min = float(row[2].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_min = float(row[3].replace(',','').replace('$',''))*float(area)*float(area_units_conversion_factor)
                                     new_feature.setAttribute(field_index, '${:,.0f}'.format(nlcd_es_min))
                                     total_min = total_min + nlcd_es_min
                                 elif output_es_stat == "mean":
-                                    nlcd_es_mean = float(row[3].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_mean = float(row[4].replace(',','').replace('$',''))*float(area)*float(area_units_conversion_factor)
                                     new_feature.setAttribute(field_index, '${:,.0f}'.format(nlcd_es_mean))
                                     total_mean = total_mean + nlcd_es_mean
                                 if output_es_stat == "max":
-                                    nlcd_es_max = float(row[4].replace(',',''))*float(area)*float(area_units_conversion_factor)
+                                    nlcd_es_max = float(row[5].replace(',','').replace('$',''))*float(area)*float(area_units_conversion_factor)
                                     new_feature.setAttribute(field_index, '${:,.0f}'.format(nlcd_es_max))
                                     total_max = total_max + nlcd_es_max
                             elif output_es_name == "total":
