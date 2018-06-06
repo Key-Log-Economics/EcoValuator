@@ -223,7 +223,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':input_raster, 'MASK':input_vector.source(), 'ALPHA_BAND':False, 'CROP_TO_CUTLINE':True, 'KEEP_RESOLUTION':False, 'DATA_TYPE':0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
         log("Done clipping raster.")
 
-        #Summarize the raster, i.e. calculate the pixel counts and total area for each NLCD value
+        #Summarize the raster, i.e. calculate the pixel counts and total area for each NLCD code
         log("Summarizing raster...")
         html_output_path = self.parameterAsFileOutput(parameters, self.HTML_OUTPUT_PATH, context)
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
@@ -254,7 +254,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         # Create list of fields (i.e. column names) for the output esv table
         output_esv_table_fields = QgsFields()
         output_esv_table_fields.append(QgsField("nlcd_code"))
-        output_esv_table_fields.append(QgsField("nlcd_value"))
+        output_esv_table_fields.append(QgsField("nlcd_description"))
         output_esv_table_fields.append(QgsField("pixel_count"))
         output_esv_table_fields.append(QgsField("area_m2"))
         # Create fields for the min, max, and mean of each unique
@@ -315,6 +315,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
 
             for row in input_esv_table:
                 if row[0] == nlcd_code:
+                    new_feature.setAttribute(1, row[1]) #Set the value of the second column in the output table, the nlcd description
                     input_es_name = row[2].lower().replace(" ", "-")
                     for field_index in output_esv_table_fields.allAttributesList():
                         output_es = output_esv_table_fields.field(field_index).name().split("_")
