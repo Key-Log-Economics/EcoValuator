@@ -261,9 +261,9 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         # ecosystem service (i.e. water, recreation, etc)
         unique_eco_services = set([row[2] for row in input_esv_table[1:]])
         for eco_service in unique_eco_services:
-            min_field_str = eco_service.lower().replace(" ", "-") + "_" + "min"
-            mean_field_str = eco_service.lower().replace(" ", "-") + "_" + "mean"
-            max_field_str = eco_service.lower().replace(" ", "-") + "_" + "max"
+            min_field_str = eco_service.lower().replace(" ", "-").replace(",", "") + "_" + "min"
+            mean_field_str = eco_service.lower().replace(" ", "-").replace(",", "") + "_" + "mean"
+            max_field_str = eco_service.lower().replace(" ", "-").replace(",", "") + "_" + "max"
             output_esv_table_fields.append(QgsField(min_field_str))
             output_esv_table_fields.append(QgsField(mean_field_str))
             output_esv_table_fields.append(QgsField(max_field_str))

@@ -60,7 +60,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     INPUT_NODATA_VALUE = 'INPUT_NODATA_VALUE'
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['aesthetic','air quality', 'biocontrol', 'climate', 'cognitive', 'cultural (other)', 'cultural service [general]', 'energy', 'erosion', 'extreme events', 'food', 'genepool', 'genetic', 'medical', 'nursery', 'pollination', 'raw materials', 'recreation', 'science and education', 'soil fertility', 'soil formation', 'tev', 'total', 'various', 'waste', 'water', 'water flows']
+    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, other', 'energy', 'erosion control', 'food/nutrition', 'medical', 'passive use', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation', 'total', 'waste assimilation', 'water supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
     STATS = ['min','mean','max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
@@ -224,7 +224,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
                 log("")
                 return {'error': error_message}
             try:
-                selected_esv = input_esv_table_feature.attribute(input_esv_field.replace(" ","-") + "_" + input_esv_stat)
+                selected_esv = input_esv_table_feature.attribute(input_esv_field.lower().replace(" ", "-").replace(",", "") + "_" + input_esv_stat)
             except KeyError:
                 feedback.reportError("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[4:]))
