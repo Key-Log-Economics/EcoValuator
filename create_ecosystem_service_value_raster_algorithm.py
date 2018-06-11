@@ -247,7 +247,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         #Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
         log(self.tr("Reading input raster into numpy array ..."))
-        grid = Raster.to_numpy(input_raster, band=1, dtype=int)
+        grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
         #Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
         unique_pixel_values_of_input_raster = np.unique(grid)
         nlcd_codes.append(str(input_nodata_value))
