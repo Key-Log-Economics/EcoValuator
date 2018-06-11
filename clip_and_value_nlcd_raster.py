@@ -119,7 +119,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         the clipped raster. The “Raster layer unique values report” algorithm
         outputs an html file with the number of pixels and total area (in meters
         squared) for each different pixel value in the input raster. We use this
-        output data for creating the Output ESV table. By default this algorithm 
+        output data for creating the Output ESV table. By default this algorithm
         doesn’t output the html file output of the “Raster layer unique values
         report” algorithm, but if you would like that data saved to a file you
         can specify that here.
@@ -409,7 +409,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("The input NLCD raster covers the entire continental US and must be in CRS: ESPG: 102003 https://epsg.io/102003 in order to successfully execute the clip to the mask layer. The output ESV table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values broken into minimum, mean, and maximum values as columns. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. See “Help” for more information on the National Land Cover Database and error issue identification.")
+        return self.tr("This algorithm does 3 things:\n 1. Clips the Input NLCD raster by the Input mask layer (which should represent the user’s region of interest).\n 2. Calculates how much area each type of land cover accounts for in the now-clipped NLCD raster.\n 3. Multiplies those areas by each of the associated ecosystem service values (ESV) in the Input table of ESV research data.\n The output includes the clipped raster and a table of aggregate ESV for each land cover type in study region.\n \nThe input NLCD raster covers the entire continental US and must be in CRS: EPSG: 102003 (CONUS in order to successfully execute the clip to the mask layer. This raster should also have 30x30 meter pixels and have NLCD values as its pixel values.\n Input mask layer: This vector is your area of interest used to clip the NLDC data. It too should be in EPSG:102003.\n Input table of ESV research data: This table of data comes pre-loaded with the plugin and provides the per-hectare-per-year minimum, average, and maximum dollar value estimates for each land cover type and ecosystem service. These figures are also adjusted for the exchange rate and inflation. These figures are derived from an extensive literature review. See Help for details.\n Place to save intermediate html file: Optional. The algorithm does not require that the .html be saved separately.\n Output ESV table: This table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values broken into minimum, mean, and maximum values as columns. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. See “Help” for more information on the National Land Cover Database and error issue identification.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
