@@ -29,6 +29,7 @@ __copyright__ = '(C) 2018 by Phil Ribbens/Key-Log Economics'
 
 __revision__ = '$Format:%H$'
 
+import os
 import numpy as np
 from numpy import copy
 import processing
@@ -322,6 +323,9 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
+
+    def helpUrl(self):
+        return "file:///%s/help/index.html" % os.path.dirname(os.path.realpath(__file__))
 
     def createInstance(self):
         return CreateEcosystemServiceValueRasterAlgorithm()
