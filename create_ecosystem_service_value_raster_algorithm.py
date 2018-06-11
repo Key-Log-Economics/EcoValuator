@@ -318,7 +318,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("Short description of " + self.name() + " algorithm")
+        return self.tr("The input NLCD raster in Step 2 is the output from Step 1, an NLCD layer clipped by a region of interest. The input ESV table is given from the plugin, and should not be altered. The next two fields, “Input ecosystem service to create raster for” and “statistic to create ESV raster for”, specify which ecosystem service you want to map and whether you want to map minimum, average, or maximum values from the ESV table. See “Help” for more information on value origins and ecosystem service descriptions.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

@@ -398,7 +398,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("Short description of " + self.name() + " algorithm")
+        return self.tr("The input NLCD raster covers the entire continental US and must be in CRS: ESPG: 102003 in order to successfully execute the clip to the mask layer. The output ESV table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values broken into minimum, mean, and maximum values as columns. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. See “Help” for more information on the National Land Cover Database and error issue identification.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
