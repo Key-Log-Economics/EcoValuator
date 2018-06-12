@@ -53,6 +53,7 @@ from qgis.core import (QgsProcessing,
 
 from .appinter import (Raster, App)
 
+
 class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
@@ -63,10 +64,9 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
     INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, other', 'energy', 'erosion control', 'food/nutrition', 'medical', 'passive use', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation', 'total', 'waste assimilation', 'water supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
-    STATS = ['min','mean','max']
+    STATS = ['min', 'mean', 'max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
     OUTPUT_RASTER_FILENAME_DEFAULT = 'Output esv raster'
-
 
     def initAlgorithm(self, config):
         """
@@ -80,13 +80,13 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        #Add a parameter where the user can specify what the nodata value of
+        # Add a parameter where the user can specify what the nodata value of
         # the raster they're inputting is.
         # Must be an integer
         # Default is 255
-        #This will be used later to make sure that any pixels in the incoming rasterany
+        # This will be used later to make sure that any pixels in the incoming rasterany
         # that have this value will continue to have this value in the output rasterself.
-        #It's also used to give this value to any pixels that would otherwise be Null
+        # It's also used to give this value to any pixels that would otherwise be Null
         # in the output raster
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -143,15 +143,15 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
         input_esv_stat = self.STATS[input_esv_stat_index]
 
-        #Append input raster filename to end of output raster filename
+        # Append input raster filename to end of output raster filename
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
             dest_name = self.OUTPUT_RASTER_FILENAME_DEFAULT.replace(" ", "_") + "-" + input_esv_field.replace(" ", "_") + "_" + input_esv_stat + "-" + input_raster.name()
             setattr(parameters['OUTPUT_RASTER'], 'destinationName', dest_name)
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        result = { self.OUTPUT_RASTER : output_raster_destination }
+        result = {self.OUTPUT_RASTER: output_raster_destination}
 
-        #Check that the input raster is in the right CRS
+        # Check that the input raster is in the right CRS
         input_raster_crs = input_raster.crs().authid()
         if input_raster_crs == "EPSG:102003":
             log("The input raster is in the right CRS: EPSG:102003. Check")
@@ -161,7 +161,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
             log("")
             return {'error': error_message}
 
-        #Check that the input raster has the right pixel size
+        # Check that the input raster has the right pixel size
         units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
         units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
         if units_per_pixel_x != 30 or units_per_pixel_y != 30:
@@ -177,7 +177,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
-        #Check to make sure the input ESV table has at least 4 columns
+        # Check to make sure the input ESV table has at least 4 columns
         input_esv_table_col_names = input_esv_table.fields().names()
         if len(input_esv_table_col_names) <= 4:
             feedback.reportError("The Input ESV table should have at least 5 columns, the one you input only has " + str(len(input_esv_table_col_names)))
@@ -186,8 +186,8 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         else:
             log("Input ESV table has at least 5 columns. Check")
 
-        #Check to make sure the input ESV table appears to have columns with ESV stats
-        stats = ['min','mean','max']
+        # Check to make sure the input ESV table appears to have columns with ESV stats
+        stats = ['min', 'mean', 'max']
         input_esv_table_esv_stat_col_names = input_esv_table_col_names[4:]
         input_esv_table_name_stats = []
         for name in input_esv_table_esv_stat_col_names:
@@ -218,7 +218,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
 
         for input_esv_table_feature in input_esv_table_features:
             nlcd_code = input_esv_table_feature.attributes()[0]
-            #Check to make sure this is a legit nlcd code. If it's not throw and error and abort the alg
+            # Check to make sure this is a legit nlcd code. If it's not throw and error and abort the alg
             if nlcd_code not in nlcd_codes:
                 error_message = "Found a value in the first column of the input ESV table that isn't a legitimate NLCD code: " + str(nlcd_code) + ". All the values in the first column of the input ESV table must be one of these: " + str(nlcd_codes)
                 feedback.reportError(error_message)
@@ -231,25 +231,25 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
                 feedback.pushDebugInfo(str(input_esv_table.fields().names()[4:]))
                 log("")
                 return result
-            #If there is no ESV for tis particular NLCD-ES combo Then
+            # If there is no ESV for tis particular NLCD-ES combo Then
             # the cell will be Null (i.e. None) and so we're dealing with
             # that below by setting the value to 255, which is the value
             # of the other cells that don't have values (at least for this
             # data)
             if selected_esv is None:
                 selected_esv = input_nodata_value
-            #If it's not null then we need to convert the total ESV for
+            # If it's not null then we need to convert the total ESV for
             # the whole area covered by that land cover (which is in USD/hectare)
             # to the per pixel ESV (USD/pixel)
             else:
                 num_pixels = input_esv_table_feature.attributes()[2]
-                selected_esv = int(selected_esv[1:].replace(',','')) / 0.0001 / int(num_pixels)
+                selected_esv = int(selected_esv[1:].replace(',', '')) / 0.0001 / int(num_pixels)
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
-        #Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
+        # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
         log(self.tr("Reading input raster into numpy array ..."))
         grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
-        #Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+        # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
         unique_pixel_values_of_input_raster = np.unique(grid)
         nlcd_codes.append(str(input_nodata_value))
         if all(str(i) in nlcd_codes for i in unique_pixel_values_of_input_raster):
@@ -265,7 +265,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         for key, value in raster_value_mapping_dict.items():
             if feedback.isCanceled():
                 return result
-            output_array[grid==key] = value
+            output_array[grid == key] = value
         log(self.tr("Values mapped"))
         log(self.tr("Saving output raster ..."))
         Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
