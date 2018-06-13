@@ -49,7 +49,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingOutputLayerDefinition,
                        QgsProcessingParameterEnum,
                        QgsMapLayerStyle
-                       )
+                      )
 
 from .appinter import (Raster, App)
 
