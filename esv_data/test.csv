@@ -1,0 +1,139 @@
+NLCD Value,NLCD Description,Select service,"MIN of Constant USD, (2017)","AVERAGE of Constant USD, (2017)","MAX of Constant USD, (2017)"
+11,Open Water,Aesthetic,"$10,007","$407,513","$1,409,897"
+11,Open Water,Biodiversity,$6,"$6,324","$43,978"
+11,Open Water,Climate Regulation,$86,$86,$86
+11,Open Water,"Cultural, other",$28,$135,$241
+11,Open Water,Energy,$96,"$2,405","$9,006"
+11,Open Water,Food/Nutrition,$2,"$28,490","$218,050"
+11,Open Water,Protection from extreme events,"$1,348","$1,348","$1,348"
+11,Open Water,Raw materials,$0,$12,$47
+11,Open Water,Recreation,$26,"$5,059","$40,590"
+11,Open Water,Soil Formation,$2,"$17,450","$34,899"
+11,Open Water,Waste Assimilation,$27,"$2,627","$9,384"
+11,Open Water,Water Supply,$59,"$1,601","$3,819"
+21,"Developed, Open Space",Aesthetic,"$1,163","$3,836","$7,641"
+21,"Developed, Open Space",Air Quality,$83,$288,$492
+21,"Developed, Open Space",Climate Regulation,"$1,077","$1,990","$2,902"
+21,"Developed, Open Space",Protection from extreme events,$807,"$1,167","$1,527"
+21,"Developed, Open Space",Recreation,"$6,833","$6,833","$6,833"
+21,"Developed, Open Space",Water Supply,$19,$219,$480
+22,"Developed, Low Intensity",Climate Regulation,$435,$435,$435
+22,"Developed, Low Intensity",Water Supply,$8,"$4,686","$9,364"
+23,"Developed, Medium Intensity",Climate Regulation,$435,$435,$435
+23,"Developed, Medium Intensity",Water Supply,$8,"$4,686","$9,364"
+24,"Developed, High Intensity",Climate Regulation,$435,$435,$435
+24,"Developed, High Intensity",Water Supply,$8,"$4,686","$9,364"
+31,Barren Land,Aesthetic,$641,"$1,167","$1,692"
+31,Barren Land,"Cultural, other",$77,$77,$77
+31,Barren Land,Food/Nutrition,$26,$26,$26
+31,Barren Land,Protection from extreme events,"$87,459","$87,459","$87,459"
+31,Barren Land,Raw materials,$0,$95,$189
+31,Barren Land,Recreation,$233,"$6,924,467","$40,629,022"
+41,Deciduous Forest,Aesthetic,$790,$790,$790
+41,Deciduous Forest,Air quality,$760,$760,$760
+41,Deciduous Forest,Biodiversity,$0,"$1,056","$6,299"
+41,Deciduous Forest,Climate Regulation,$8,$125,$424
+41,Deciduous Forest,"Cultural, other",$0,$0,$1
+41,Deciduous Forest,Erosion Control,$1,$1,$1
+41,Deciduous Forest,Food/Nutrition,$1,$246,$652
+41,Deciduous Forest,Medical,$13,$13,$13
+41,Deciduous Forest,Protection from extreme events,$0,$0,$0
+41,Deciduous Forest,Raw materials,$1,$37,$133
+41,Deciduous Forest,Recreation,$1,$8,$24
+41,Deciduous Forest,Waste Assimilation,$0,$11,$22
+41,Deciduous Forest,Water Supply,$1,$48,$121
+42,Evergreen Forest,Aesthetic,$790,$790,$790
+42,Evergreen Forest,Biodiversity,$0,"$1,058","$6,299"
+42,Evergreen Forest,Climate Regulation,$4,"$2,727","$11,790"
+42,Evergreen Forest,"Cultural, other",$0,$0,$1
+42,Evergreen Forest,Erosion Control,$1,$1,$1
+42,Evergreen Forest,Food/Nutrition,$0,$185,$652
+42,Evergreen Forest,Medical,$13,$13,$13
+42,Evergreen Forest,Protection from extreme events,$0,$0,$0
+42,Evergreen Forest,Raw materials,$1,$23,$66
+42,Evergreen Forest,Recreation,$1,$5,$12
+42,Evergreen Forest,Waste Assimilation,$0,$11,$22
+42,Evergreen Forest,Water Supply,$0,$31,$121
+43,Mixed Forest,Aesthetic,$391,"$7,229","$46,417"
+43,Mixed Forest,Air quality,$76,$325,$574
+43,Mixed Forest,Biodiversity,$0,$762,"$6,299"
+43,Mixed Forest,Climate Regulation,$8,$226,$828
+43,Mixed Forest,"Cultural, other",$0,$194,"$1,062"
+43,Mixed Forest,Erosion Control,$1,$51,$158
+43,Mixed Forest,Food/Nutrition,$1,"$2,093","$6,193"
+43,Mixed Forest,Medical,$0,$2,$4
+43,Mixed Forest,Pollination,$4,$192,$519
+43,Mixed Forest,Protection from extreme events,$0,"$1,338","$2,041"
+43,Mixed Forest,Raw materials,$1,$113,$543
+43,Mixed Forest,Recreation,$1,"$185,534","$2,923,663"
+43,Mixed Forest,Soil Formation,$16,$42,$58
+43,Mixed Forest,Waste Assimilation,$0,$239,$683
+43,Mixed Forest,Water Supply,$0,$823,"$3,306"
+52,Shrub/Scrub,Aesthetic,$734,$734,$734
+52,Shrub/Scrub,Biodiversity,$0,"$2,962,432","$14,809,622"
+52,Shrub/Scrub,Climate Regulation,$369,$369,$369
+52,Shrub/Scrub,"Cultural, other",$13,"$1,082","$2,152"
+52,Shrub/Scrub,Erosion Control,$876,$876,$876
+52,Shrub/Scrub,Food/Nutrition,$1,"$1,133","$2,265"
+52,Shrub/Scrub,Medical,$0,$0,$0
+52,Shrub/Scrub,Protection from extreme events,$282,$282,$282
+52,Shrub/Scrub,Recreation,$9,"$2,186","$4,392"
+52,Shrub/Scrub,Water Supply,$84,"$2,276","$6,160"
+71,Grassland/Herbaceous,Aesthetic,$43,"$3,101","$11,859"
+71,Grassland/Herbaceous,Biodiversity,$0,$173,$750
+71,Grassland/Herbaceous,Climate Regulation,$0,$80,$428
+71,Grassland/Herbaceous,Energy,"$1,260","$1,260","$1,260"
+71,Grassland/Herbaceous,Erosion Control,$45,"$11,162","$66,567"
+71,Grassland/Herbaceous,Food/Nutrition,$94,$94,$94
+71,Grassland/Herbaceous,Pollination,$42,$42,$42
+71,Grassland/Herbaceous,Protection from extreme events,$157,"$5,029","$9,901"
+71,Grassland/Herbaceous,Raw materials,$29,"$49,915,132","$99,830,235"
+71,Grassland/Herbaceous,Recreation,$1,"$12,502","$37,503"
+71,Grassland/Herbaceous,Soil Formation,$9,$9,$9
+71,Grassland/Herbaceous,Waste Assimilation,$12,"$13,730","$52,312"
+71,Grassland/Herbaceous,Water Supply,$6,$341,$813
+81,Pasture/Hay,Aesthetic,$262,$280,$298
+81,Pasture/Hay,Food/Nutrition,$57,$57,$57
+82,Cultivated Crops,Aesthetic,$90,"$19,645","$47,059"
+82,Cultivated Crops,Air quality,$94,$248,$403
+82,Cultivated Crops,Biodiversity,$37,$812,"$2,664"
+82,Cultivated Crops,Climate Regulation,$1,$573,"$2,347"
+82,Cultivated Crops,Erosion Control,$70,$128,$186
+82,Cultivated Crops,Food/Nutrition,$37,"$5,883","$19,973"
+82,Cultivated Crops,Pollination,$26,"$1,317","$5,086"
+82,Cultivated Crops,Raw materials,$19,$133,$248
+82,Cultivated Crops,Recreation,$2,$38,$124
+82,Cultivated Crops,Soil Formation,$19,$284,$548
+82,Cultivated Crops,Waste Assimilation,$245,$297,$338
+82,Cultivated Crops,Water Supply,$112,$243,$374
+90,Woody Wetlands,Aesthetic,$62,"$8,019","$35,855"
+90,Woody Wetlands,Air quality,$193,$260,$337
+90,Woody Wetlands,Biodiversity,$4,"$9,184,521","$315,702,180"
+90,Woody Wetlands,Climate Regulation,$2,"$6,622,310","$94,163,746"
+90,Woody Wetlands,"Cultural, other",$13,"$1,754","$3,912"
+90,Woody Wetlands,Erosion Control,$114,$524,"$1,011"
+90,Woody Wetlands,Food/Nutrition,$0,"$1,610","$43,190"
+90,Woody Wetlands,Medical,$3,$16,$41
+90,Woody Wetlands,Passive Use,$936,$936,$936
+90,Woody Wetlands,Protection from extreme events,$44,"$183,116","$3,972,533"
+90,Woody Wetlands,Raw materials,$0,"$71,767","$3,504,610"
+90,Woody Wetlands,Recreation,$10,"$7,509","$135,369"
+90,Woody Wetlands,Soil Formation,$320,"$2,366","$5,425"
+90,Woody Wetlands,Waste Assimilation,$50,"$4,174,602","$27,072,077"
+90,Woody Wetlands,Water Supply,$84,"$1,150,996","$11,034,814"
+95,Emergent Herbaceous Wetlands,Aesthetic,$62,"$8,579","$35,855"
+95,Emergent Herbaceous Wetlands,Air Quality,$193,$222,$251
+95,Emergent Herbaceous Wetlands,Biodiversity,$0,"$701,586","$24,499,503"
+95,Emergent Herbaceous Wetlands,Climate Regulation,$0,"$2,858,844","$39,725,330"
+95,Emergent Herbaceous Wetlands,"Cultural, other",$81,"$1,958","$4,642"
+95,Emergent Herbaceous Wetlands,Erosion Control,$105,"$3,277,106","$13,094,646"
+95,Emergent Herbaceous Wetlands,Food/Nutrition,$0,"$1,290","$43,190"
+95,Emergent Herbaceous Wetlands,Medical,$0,$30,$109
+95,Emergent Herbaceous Wetlands,Passive Use,$936,$936,$936
+95,Emergent Herbaceous Wetlands,Pollination,$20,$20,$20
+95,Emergent Herbaceous Wetlands,Protection from extreme events,$3,"$139,151","$3,972,533"
+95,Emergent Herbaceous Wetlands,Raw materials,$0,$292,"$5,626"
+95,Emergent Herbaceous Wetlands,Recreation,$0,"$13,237","$587,809"
+95,Emergent Herbaceous Wetlands,Soil Formation,$4,"$612,569","$4,881,531"
+95,Emergent Herbaceous Wetlands,Waste Assimilation,$5,"$1,323,950","$27,072,077"
+95,Emergent Herbaceous Wetlands,Water Supply,$0,"$616,566","$11,034,814"
