@@ -108,7 +108,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_ESV_FIELD,
-                self.tr('Input ecosystem service to create raster for'),
+                self.tr('Ecosystem service of interest'),
                 self.INPUT_ESV_FIELD_OPTIONS
             )
         )
@@ -116,7 +116,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_ESV_STAT,
-                self.tr('Statistic to create ESV raster for'),
+                self.tr('ES value level'),
                 self.STATS
             )
         )
