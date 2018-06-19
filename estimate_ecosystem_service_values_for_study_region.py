@@ -60,7 +60,7 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 __esv_data_location__ = os.path.join(__location__, "esv_data")
 
 
-class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
+class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
@@ -357,7 +357,7 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 1: Clip and value NLCD raster'
+        return 'Step 1: Estimate ecosystem service values for study region'
 
     def displayName(self):
         """
@@ -403,4 +403,4 @@ class ClipAndValueNLCDRaster(QgsProcessingAlgorithm):
         return "file:///%s/help/index.html" % os.path.dirname(os.path.realpath(__file__))
 
     def createInstance(self):
-        return ClipAndValueNLCDRaster()
+        return EstimateEcosystemServiceValuesForStudyRegion()

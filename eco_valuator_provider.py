@@ -30,8 +30,8 @@ __copyright__ = '(C) 2018 by Key-Log Economics'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
-from .clip_and_value_nlcd_raster import ClipAndValueNLCDRaster
-from .create_ecosystem_service_value_raster_algorithm import CreateEcosystemServiceValueRasterAlgorithm
+from .estimate_ecosystem_service_values_for_study_region import EstimateEcosystemServiceValuesForStudyRegion
+from .map_the_value_of_individual_ecosystem_services import MapTheValueOfIndividualEcosystemServices
 
 
 class EcoValuatorProvider(QgsProcessingProvider):
@@ -40,7 +40,7 @@ class EcoValuatorProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [ClipAndValueNLCDRaster(), CreateEcosystemServiceValueRasterAlgorithm()]
+        self.alglist = [EstimateEcosystemServiceValuesForStudyRegion(), MapTheValueOfIndividualEcosystemServices()]
 
     def unload(self):
         """

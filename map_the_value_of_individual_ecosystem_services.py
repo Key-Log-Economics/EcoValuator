@@ -54,7 +54,7 @@ from qgis.core import (QgsProcessing,
 from .appinter import (Raster, App)
 
 
-class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
+class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
@@ -287,7 +287,7 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 2: Create ESV raster'
+        return 'Step 2: Map the value of individual ecosystem services'
 
     def displayName(self):
         """
@@ -328,4 +328,4 @@ class CreateEcosystemServiceValueRasterAlgorithm(QgsProcessingAlgorithm):
         return "file:///%s/help/index.html" % os.path.dirname(os.path.realpath(__file__))
 
     def createInstance(self):
-        return CreateEcosystemServiceValueRasterAlgorithm()
+        return MapTheValueOfIndividualEcosystemServices()
