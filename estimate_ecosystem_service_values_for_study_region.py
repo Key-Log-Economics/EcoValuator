@@ -400,7 +400,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         location that will be followed when the user clicks the Help button
         in the algorithm's UI.
         """
-        return "http://keylogeconomics.com/eco-valuator-help/"
+        return "http://keylogeconomics.com/ecovaluator-help/"
 
     def createInstance(self):
         return EstimateEcosystemServiceValuesForStudyRegion()

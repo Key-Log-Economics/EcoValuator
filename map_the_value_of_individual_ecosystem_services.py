@@ -325,7 +325,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def helpUrl(self):
-        return "http://keylogeconomics.com/eco-valuator-help/"
+        return "http://keylogeconomics.com/ecovaluator-help/"
 
     def createInstance(self):
         return MapTheValueOfIndividualEcosystemServices()
