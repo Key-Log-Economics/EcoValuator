@@ -8,4 +8,4 @@ In the second step (map_the_value_of_individual_ecosystem_services.py), the EcoV
 
 # More Information
 
-See the [Key-Log Economics website](http://keylogeconomics.com/eco-valuator-help/) or the plugin's sidebar help for more information.
+See the [Key-Log Economics website](http://keylogeconomics.com/ecovaluator-help/) or the plugin's sidebar help for more information.
