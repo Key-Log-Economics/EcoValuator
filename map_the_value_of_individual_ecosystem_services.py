@@ -62,7 +62,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     INPUT_NODATA_VALUE = 'INPUT_NODATA_VALUE'
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, other', 'energy', 'erosion control', 'food/nutrition', 'medical', 'passive use', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation', 'total', 'waste assimilation', 'water supply']
+    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, other', 'erosion control', 'food/nutrition', 'medicinal', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'renewable energy','soil formation','waste assimilation', 'water supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
     STATS = ['min', 'mean', 'max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
