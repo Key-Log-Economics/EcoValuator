@@ -243,7 +243,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             # to the per pixel ESV (USD/pixel)
             else:
                 num_pixels = input_esv_table_feature.attributes()[2]
-                selected_esv = int(selected_esv[1:].replace(',', '')) / 0.0001 / int(num_pixels)
+                selected_esv = int(selected_esv[1:].replace(',', '')) / int(num_pixels)
             raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
 
         # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
