@@ -6,8 +6,6 @@ In the first step (estimate_ecosystem_service_values_for_study_region.py), the E
 
 In the second step (map_the_value_of_individual_ecosystem_services.py), the EcoValuator generates a raster for a chosen ecosystem service so that users can view the spatial variation in that service’s value across the study region. By repeating this step for other ecosystem services, the user can create a series of maps of different values that can be layered or stacked to show combined value for multiple services.
 
-In the third step (forthcoming...)
-
 # More Information
 
 See the [Key-Log Economics website](http://keylogeconomics.com/ecovaluator-help/) or the plugin's sidebar help for more information.

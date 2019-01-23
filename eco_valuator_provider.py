@@ -32,7 +32,7 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessingProvider
 from .estimate_ecosystem_service_values_for_study_region import EstimateEcosystemServiceValuesForStudyRegion
 from .map_the_value_of_individual_ecosystem_services import MapTheValueOfIndividualEcosystemServices
-from .create_print_layout import EstimateEcosystemServiceValuesForStudyRegionDev
+from .create_print_layout_and_export_map import CreatePrintLayoutAndExportMap
 
 
 class EcoValuatorProvider(QgsProcessingProvider):
@@ -41,7 +41,7 @@ class EcoValuatorProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [EstimateEcosystemServiceValuesForStudyRegion(), MapTheValueOfIndividualEcosystemServices(), EstimateEcosystemServiceValuesForStudyRegionDev()]
+        self.alglist = [EstimateEcosystemServiceValuesForStudyRegion(), MapTheValueOfIndividualEcosystemServices(), CreatePrintLayoutAndExportMap()]
 
     def unload(self):
         """
