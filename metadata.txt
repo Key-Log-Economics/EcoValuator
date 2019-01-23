@@ -14,7 +14,7 @@ version=2.0
 author=Key-Log Economics
 email=anna@keylogeconomics.com
 
-about= Dev Branch of the plugin.        
+about= The QGIS EcoValuator provides a simple means of estimating the dollar value of ecosystem services, such as for recreation, water supply, food, and others.  In the first step, the EcoValuator clips and attaches raster data from the National Land Cover Database (NLCD) to a user-supplied polygon or polygon layer and attaches a set of per-unit-area values based on the land cover type of each pixel. Output from this step includes a new raster including just the clipped data and a table of aggregate ecosystem service values (in dollars per year) for each land cover-and-ecosystem service combination. In the second step, the EcoValuator generates a raster for a chosen ecosystem service so that users can view the spatial variation in that service’s value across the study region. By repeating this step for other ecosystem services, the user can create a series of maps of different values that can be layered or stacked to show combined value for multiple services. The third step generates a .pdf output of the raster layer output from step 2. The output is based on the extent of the map and the legend is comprised of the layers active in the map frame. (***NEEDS WORK***)                                                                                               Development of the EcoValuator has been made possible by the National Fish and Wildlife Foundation through its generous support of Key-Log Economics’ research program “Ecosystem Services in the Roanoke River Basin”.        
 
 tracker=https://github.com/Key-Log-Economics/eco-valuator/issues
 repository=https://github.com/Key-Log-Economics/eco-valuator
