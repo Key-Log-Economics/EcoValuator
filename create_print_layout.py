@@ -60,7 +60,7 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 __esv_data_location__ = os.path.join(__location__, "esv_data")
 
 
-class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
+class EstimateEcosystemServiceValuesForStudyRegionDev(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
@@ -357,7 +357,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 1: Estimate ecosystem service values for study region'
+        return 'Step 3: Create Print Layout and Export Map'
 
     def displayName(self):
         """
@@ -403,4 +403,4 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         return "http://keylogeconomics.com/ecovaluator-help/"
 
     def createInstance(self):
-        return EstimateEcosystemServiceValuesForStudyRegion()
+        return EstimateEcosystemServiceValuesForStudyRegionDev()
