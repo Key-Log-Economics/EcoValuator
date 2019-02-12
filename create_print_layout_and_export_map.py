@@ -10,7 +10,6 @@
         begin                : 2018-04-02
         copyright            : (C) 2018 by Key-Log Economics
  ***************************************************************************/
-
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -46,6 +45,7 @@ from qgis.core import (QgsProcessing,
                        QgsFeature,
                        QgsFeatureSink,
                        QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterString,
                        QgsProcessingParameterFileDestination,
                        QgsProcessingOutputLayerDefinition,
                        QgsRasterLayer,
@@ -64,20 +64,48 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
-    INPUT_RASTER = 'INPUT_RASTER'
+    INPUT_VECTOR = 'INPUT_VECTOR'
+    INPUT_TITLE = 'INPUT_TITLE'
+    INPUT_SUBTITLE = 'INPUT_SUBTITLE'
+    INPUT_CREDIT_TEXT = 'INPUT_CREDIT_TEXT'
     
     
     def initAlgorithm(self, config):
         """
         Here we define the inputs and output of the algorithm
         """
+        #Add Raster Layer as input
         self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster layer you wish to map. This should be output raster layer from step 2.')
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_VECTOR,
+                self.tr('Input original vector layer of study area used in Step 1')
             )
         )
         
+        #Add String as input
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_TITLE,
+                self.tr('Input title string (Optional)')
+            )
+        )
+
+        #Add String as input
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_SUBTITLE,
+                self.tr('Input Subtitle (this should be returned from the ESV choice in step 2)(Optional)')
+            )
+        )
+
+        #Add String as input
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_CREDIT_TEXT,
+                self.tr('Input Credits Text (Optional)')
+            )
+        )
+
 
     def name(self):
         """
