@@ -287,7 +287,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 2: Map the value of individual ecosystem services'
+        return 'Step 2: Map the Value of Individual Ecosystem Services'
 
     def displayName(self):
         """

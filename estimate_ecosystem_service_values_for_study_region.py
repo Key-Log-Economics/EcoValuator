@@ -357,7 +357,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 1: Estimate ecosystem service values for study region'
+        return 'Step 1: Estimate Ecosystem Service Values (ESVs) for Study Region'
 
     def displayName(self):
         """

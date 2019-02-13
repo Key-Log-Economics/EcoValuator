@@ -106,6 +106,16 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
             )
         )
 
+	
+    def processAlgorithm(self, parameters, context, feedback):
+        #needs all the arguments (self, parameters, context, feedback)
+        
+        log = feedback.setProgressText
+        
+        input_vector = self.parameterAsRasterLayer(parameters, self.INPUT_VECTOR, context)
+
+
+
 
     def name(self):
         """
@@ -115,7 +125,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 3: Create Print Layout and Export Map'
+        return 'Step 3: Create Print Layout and Export as .pdf'
 
     def displayName(self):
         """
