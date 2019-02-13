@@ -78,7 +78,8 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_VECTOR,
-                self.tr('Input original vector layer of study area used in Step 1')
+                self.tr('Input original vector layer of study area used in Step 1'),
+                [QgsProcessing.TypeVectorAnyGeometry]
             )
         )
         
@@ -90,30 +91,40 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
             )
         )
 
-        #Add String as input
-        self.addParameter(
-            QgsProcessingParameterString(
-                self.INPUT_SUBTITLE,
-                self.tr('Input Subtitle (this should be returned from the ESV choice in step 2)(Optional)')
-            )
-        )
-
-        #Add String as input
-        self.addParameter(
-            QgsProcessingParameterString(
-                self.INPUT_CREDIT_TEXT,
-                self.tr('Input Credits Text (Optional)')
-            )
-        )
+#        #Add String as input
+#        self.addParameter(
+#            QgsProcessingParameterString(
+#                self.INPUT_SUBTITLE,
+#                self.tr('Input Subtitle (this should be returned from the ESV choice in step 2)(Optional)')
+#            )
+#        )
+#
+#        #Add String as input
+#        self.addParameter(
+#            QgsProcessingParameterString(
+#                self.INPUT_CREDIT_TEXT,
+#                self.tr('Input Credits Text (Optional)')
+#            )
+#        )
 
 	
     def processAlgorithm(self, parameters, context, feedback):
+        """This actually does the processing for creating the print layout and exporting as .pdf"""
         #needs all the arguments (self, parameters, context, feedback)
+        
         
         log = feedback.setProgressText
         
-        input_vector = self.parameterAsRasterLayer(parameters, self.INPUT_VECTOR, context)
+        input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
+        input_title = self.parameterAsString(parameters, self.INPUT_TITLE, context)
+        
+        log(input_title.name())
+#        input_vector_crs = input_vector.crs().authid()
+#        if input_vector_crs == "EPSG:102003":
+#            log("correct input vector crs")
+        
 
+            
 
 
 

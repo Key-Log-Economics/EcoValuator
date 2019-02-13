@@ -118,6 +118,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
                 self.tr('Place to save intermediate html file')
             )
         )
+        #maybe this should be QgsProcessingParameterFileDestination?
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_ESV_TABLE,
