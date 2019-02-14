@@ -68,13 +68,13 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
     INPUT_TITLE = 'INPUT_TITLE'
     INPUT_SUBTITLE = 'INPUT_SUBTITLE'
     INPUT_CREDIT_TEXT = 'INPUT_CREDIT_TEXT'
-    
+    INPUT_CREDIT_TEXT_DEFAULT = "Default Credit Text"
     
     def initAlgorithm(self, config):
         """
         Here we define the inputs and output of the algorithm
         """
-        #Add Raster Layer as input
+        #Add Vector Layer as input
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_VECTOR,
@@ -87,25 +87,28 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.INPUT_TITLE,
-                self.tr('Input title string (Optional)')
+                self.tr('Input title string (Optional)'),
+                " "                                         #this is in place of making the dialog box "optional". Instead just gives default value as blank string
             )
         )
 
-#        #Add String as input
-#        self.addParameter(
-#            QgsProcessingParameterString(
-#                self.INPUT_SUBTITLE,
-#                self.tr('Input Subtitle (this should be returned from the ESV choice in step 2)(Optional)')
-#            )
-#        )
-#
-#        #Add String as input
-#        self.addParameter(
-#            QgsProcessingParameterString(
-#                self.INPUT_CREDIT_TEXT,
-#                self.tr('Input Credits Text (Optional)')
-#            )
-#        )
+        #Add String as input
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_SUBTITLE,
+                self.tr('Input Subtitle (this should be returned from the ESV choice in step 2)(Optional)'),
+                " "
+            )
+        )
+
+        #Add String as input
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.INPUT_CREDIT_TEXT,
+                self.tr('Input Credit Text (Optional)'),
+                " "
+            )
+        )
 
 	
     def processAlgorithm(self, parameters, context, feedback):
@@ -117,11 +120,14 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         
         input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
         input_title = self.parameterAsString(parameters, self.INPUT_TITLE, context)
+        input_subtitle = self.parameterAsString(parameters, self.INPUT_SUBTITLE, context)
+        input_credit_text = self.parameterAsString(parameters, self.INPUT_CREDIT_TEXT, context)
         
-        log(input_title.name())
-#        input_vector_crs = input_vector.crs().authid()
-#        if input_vector_crs == "EPSG:102003":
-#            log("correct input vector crs")
+        log(f"Input vector name: {input_vector.name()}")            #takes attributes of vector object
+        log(f"Title: {input_title}")                    #can also us f strings                 
+        log(f"Subtitle: {input_subtitle}")
+        log(f"Credit Text: {input_credit_text}")
+        
         
 
             
