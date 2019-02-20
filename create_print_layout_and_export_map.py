@@ -31,30 +31,37 @@ __revision__ = '$Format:%H$'
 import os
 import csv
 import processing
+import numpy as np
 
-from PyQt5.QtCore import (QCoreApplication,
-                          QFileInfo
-                          )
 
-from qgis.core import (QgsProcessing,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterFile,
-                       QgsProcessingParameterFeatureSink,
-                       QgsFields,
-                       QgsField,
-                       QgsFeature,
-                       QgsFeatureSink,
-                       QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterString,
-                       QgsProcessingParameterFileDestination,
-                       QgsProcessingOutputLayerDefinition,
-                       QgsRasterLayer,
-                       QgsProcessingParameterEnum,
-                       QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterRasterDestination
-                       )
 
-from .parser import HTMLTableParser
+from PyQt5.QtGui import *
+
+
+#from qgis.core import (QgsProcessing,
+#                       QgsProcessingAlgorithm,
+#                       QgsProcessingParameterRasterLayer,
+#                       QgsProcessingParameterString,
+#                       QgsProcessingParameterFileDestination,
+#                       QgsProcessingOutputLayerDefinition,
+#                       QgsRasterLayer,
+#                       QgsProcessingParameterVectorLayer,
+#                       QgsProcessingParameterRasterDestination,
+#                       QgsProject,
+#                       QgsPrintLayout,
+#                       QgsLayoutItemMap,
+#                       QgsUnitTypes,
+#                       QgsLayoutPoint,
+#                       QgsLayoutSize,
+#                       QgsLayoutItemLegend,
+#                       QgsLayoutItemLabel,
+#                       QgsLayerTree
+#                       )
+
+from qgis.core import *
+
+from qgis.utils import *
+
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -115,7 +122,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         """This actually does the processing for creating the print layout and exporting as .pdf"""
         #needs all the arguments (self, parameters, context, feedback)
         
-        
         log = feedback.setProgressText
         
         input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
@@ -124,15 +130,49 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         input_credit_text = self.parameterAsString(parameters, self.INPUT_CREDIT_TEXT, context)
         
         log(f"Input vector name: {input_vector.name()}")            #takes attributes of vector object
-        log(f"Title: {input_title}")                    #can also us f strings                 
-        log(f"Subtitle: {input_subtitle}")
-        log(f"Credit Text: {input_credit_text}")
+        log(f"Title: {input_title}")                    #can also us f strings   
+
+
+        """This creates a new print layout"""
+        project = QgsProject.instance()             #gets a reference to the project instance
+        manager = project.layoutManager()           #gets a reference to the layout manager
+        layout = QgsPrintLayout(project)            #makes a new print layout object, takes a QgsProject as argument
+        layoutName = "PrintLayout"
+
+        layouts_list = manager.printLayouts()
+        for layout in layouts_list:
+            if layout.name() == layoutName:
+                manager.removeLayout(layout)
         
+        layout = QgsPrintLayout(project)
+        layout.initializeDefaults()                 #create default map canvas
+        layout.setName(layoutName)
+        manager.addLayout(layout)
+
+
+
+        """This adds a map item to the Print Layout"""
+        map = QgsLayoutItemMap(layout)
+        map.setRect(20, 20, 20, 20)  
+
         
+        #Set Extent
+        canvas = iface.mapCanvas()
+        map.setExtent(canvas.extent())                  #sets map extent to current map canvas
+        layout.addLayoutItem(map)
 
-            
+        #Move & Resize
+        map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
+        map.attemptResize(QgsLayoutSize(239, 178, QgsUnitTypes.LayoutMillimeters))
 
+        results = {}
+        return results
 
+    def flags(self):
+        """
+        Write more about what this is actually doing
+        """
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
 
     def name(self):
         """
