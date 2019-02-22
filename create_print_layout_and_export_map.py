@@ -31,34 +31,35 @@ __revision__ = '$Format:%H$'
 import os
 import csv
 import processing
-import numpy as np
+import numpy
 
 
 
 from PyQt5.QtGui import *
 
 
-#from qgis.core import (QgsProcessing,
-#                       QgsProcessingAlgorithm,
-#                       QgsProcessingParameterRasterLayer,
-#                       QgsProcessingParameterString,
-#                       QgsProcessingParameterFileDestination,
-#                       QgsProcessingOutputLayerDefinition,
-#                       QgsRasterLayer,
-#                       QgsProcessingParameterVectorLayer,
-#                       QgsProcessingParameterRasterDestination,
-#                       QgsProject,
-#                       QgsPrintLayout,
-#                       QgsLayoutItemMap,
-#                       QgsUnitTypes,
-#                       QgsLayoutPoint,
-#                       QgsLayoutSize,
-#                       QgsLayoutItemLegend,
-#                       QgsLayoutItemLabel,
-#                       QgsLayerTree
-#                       )
+from qgis.core import (QgsProcessing,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterFileDestination,
+                       QgsProcessingOutputLayerDefinition,
+                       QgsRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProject,
+                       QgsPrintLayout,
+                       QgsLayoutItemMap,
+                       QgsUnitTypes,
+                       QgsLayoutPoint,
+                       QgsLayoutSize,
+                       QgsLayoutItemLegend,
+                       QgsLayoutItemLabel,
+                       QgsLayerTree,
+                       QgsRasterBandStats
+                       )
 
-from qgis.core import *
+#from qgis.core import *
 
 from qgis.utils import *
 
@@ -81,15 +82,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         """
         Here we define the inputs and output of the algorithm
         """
-        #Add Vector Layer as input
-        self.addParameter(
-            QgsProcessingParameterVectorLayer(
-                self.INPUT_VECTOR,
-                self.tr('Input original vector layer of study area used in Step 1'),
-                [QgsProcessing.TypeVectorAnyGeometry]
-            )
-        )
-        
         #Add String as input
         self.addParameter(
             QgsProcessingParameterString(
@@ -117,27 +109,25 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
             )
         )
 
-	
+    
     def processAlgorithm(self, parameters, context, feedback):
         """This actually does the processing for creating the print layout and exporting as .pdf"""
         #needs all the arguments (self, parameters, context, feedback)
         
         log = feedback.setProgressText
         
-        input_vector = self.parameterAsVectorLayer(parameters, self.INPUT_VECTOR, context)
         input_title = self.parameterAsString(parameters, self.INPUT_TITLE, context)
         input_subtitle = self.parameterAsString(parameters, self.INPUT_SUBTITLE, context)
         input_credit_text = self.parameterAsString(parameters, self.INPUT_CREDIT_TEXT, context)
         
-        log(f"Input vector name: {input_vector.name()}")            #takes attributes of vector object
-        log(f"Title: {input_title}")                    #can also us f strings   
+        log(f"Title: {input_title}")                       
 
 
         """This creates a new print layout"""
-        project = QgsProject.instance()             #gets a reference to the project instance
-        manager = project.layoutManager()           #gets a reference to the layout manager
-        layout = QgsPrintLayout(project)            #makes a new print layout object, takes a QgsProject as argument
-        layoutName = "PrintLayout"
+        project = QgsProject.instance()             
+        manager = project.layoutManager()           
+        layout = QgsPrintLayout(project)            
+        layoutName = input_title                    #layoutName is going to be name of Title
 
         layouts_list = manager.printLayouts()
         for layout in layouts_list:
@@ -150,11 +140,9 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         manager.addLayout(layout)
 
 
-
         """This adds a map item to the Print Layout"""
         map = QgsLayoutItemMap(layout)
         map.setRect(20, 20, 20, 20)  
-
         
         #Set Extent
         canvas = iface.mapCanvas()
@@ -164,13 +152,34 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         #Move & Resize
         map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
         map.attemptResize(QgsLayoutSize(239, 178, QgsUnitTypes.LayoutMillimeters))
+        
+        """Gathers active layers to add to legend"""
+        #Checks layer tree objects and stores them in a list. This includes csv tables
+        checked_layers = [layer.name() for layer in QgsProject().instance().layerTreeRoot().children() if layer.isVisible()]
+        print(f"Adding {checked_layers} to legend." )
+        #get map layer objects of checked layers by matching their names and store those in a list
+        layersToAdd = [layer for layer in QgsProject().instance().mapLayers().values() if layer.name() in checked_layers]
+        root = QgsLayerTree()
+        for layer in layersToAdd:
+            log(f"Adding {layer.name()} to legend")
+            root.addLayer(layer)
 
-        results = {}
+        """This adds a legend item to the Print Layout"""
+        legend = QgsLayoutItemLegend(layout)
+        legend.model().setRootGroup(root)
+        layout.addLayoutItem(legend)
+        legend.attemptMove(QgsLayoutPoint(246, 5, QgsUnitTypes.LayoutMillimeters))
+
+
+
+        results = {}                    #All I know is processAlgorithm wants to return a dictionary
         return results
 
     def flags(self):
         """
-        Write more about what this is actually doing
+        From documentation: Algorithm is not thread safe and cannot be run in a
+        background thread, e.g. algorithms which manipulate the current project,
+        layer selections, or with external dependencies which are not thread safe.
         """
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
 
