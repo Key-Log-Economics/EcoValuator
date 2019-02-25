@@ -40,13 +40,10 @@ from PyQt5.QtGui import *
 
 from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterString,
                        QgsProcessingParameterFileDestination,
                        QgsProcessingOutputLayerDefinition,
                        QgsRasterLayer,
-                       QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterRasterDestination,
                        QgsProject,
                        QgsPrintLayout,
                        QgsLayoutItemMap,
@@ -56,10 +53,10 @@ from qgis.core import (QgsProcessing,
                        QgsLayoutItemLegend,
                        QgsLayoutItemLabel,
                        QgsLayerTree,
-                       QgsRasterBandStats
+                       QgsRasterBandStats,
+                       QgsLayoutExporter
                        )
 
-#from qgis.core import *
 
 from qgis.utils import *
 
@@ -76,7 +73,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
     INPUT_TITLE = 'INPUT_TITLE'
     INPUT_SUBTITLE = 'INPUT_SUBTITLE'
     INPUT_CREDIT_TEXT = 'INPUT_CREDIT_TEXT'
-    INPUT_CREDIT_TEXT_DEFAULT = "Default Credit Text"
+    OUTPUT_PDF_PATH = 'OUTPUT PDF PATH'
     
     def initAlgorithm(self, config):
         """
@@ -109,6 +106,15 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
             )
         )
 
+        #Add file path as input
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_PDF_PATH,
+                self.tr('Choose file path for pdf output'),
+                ".pdf"
+            )
+        )
+
     
     def processAlgorithm(self, parameters, context, feedback):
         """This actually does the processing for creating the print layout and exporting as .pdf"""
@@ -119,6 +125,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         input_title = self.parameterAsString(parameters, self.INPUT_TITLE, context)
         input_subtitle = self.parameterAsString(parameters, self.INPUT_SUBTITLE, context)
         input_credit_text = self.parameterAsString(parameters, self.INPUT_CREDIT_TEXT, context)
+        output_pdf_path = self.parameterAsString(parameters, self.OUTPUT_PDF_PATH, context)
         
         log(f"Title: {input_title}")                       
 
@@ -127,7 +134,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         project = QgsProject.instance()             
         manager = project.layoutManager()           
         layout = QgsPrintLayout(project)            
-        layoutName = input_title                    #layoutName is going to be name of Title
+        layoutName = 'PrintLayout'                 #layoutName is going to be name of Title. Change this later
 
         layouts_list = manager.printLayouts()
         for layout in layouts_list:
@@ -153,22 +160,37 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
         map.attemptResize(QgsLayoutSize(239, 178, QgsUnitTypes.LayoutMillimeters))
         
-        """Gathers active layers to add to legend"""
-        #Checks layer tree objects and stores them in a list. This includes csv tables
-        checked_layers = [layer.name() for layer in QgsProject().instance().layerTreeRoot().children() if layer.isVisible()]
-        print(f"Adding {checked_layers} to legend." )
-        #get map layer objects of checked layers by matching their names and store those in a list
-        layersToAdd = [layer for layer in QgsProject().instance().mapLayers().values() if layer.name() in checked_layers]
-        root = QgsLayerTree()
-        for layer in layersToAdd:
-            log(f"Adding {layer.name()} to legend")
-            root.addLayer(layer)
+        """This adds labels to the map"""
+        title = QgsLayoutItemLabel(layout)
+        title.setText(input_title)
+        title.setFont(QFont("Arial", 28))
+        title.adjustSizeToText()
+        layout.addLayoutItem(title)
+        title.attemptMove(QgsLayoutPoint(10, 4, QgsUnitTypes.LayoutMillimeters))
 
-        """This adds a legend item to the Print Layout"""
-        legend = QgsLayoutItemLegend(layout)
-        legend.model().setRootGroup(root)
-        layout.addLayoutItem(legend)
-        legend.attemptMove(QgsLayoutPoint(246, 5, QgsUnitTypes.LayoutMillimeters))
+        subtitle = QgsLayoutItemLabel(layout)
+        subtitle.setText(input_subtitle)
+        subtitle.setFont(QFont("Arial", 17))
+        subtitle.adjustSizeToText()
+        layout.addLayoutItem(subtitle)
+        subtitle.attemptMove(QgsLayoutPoint(11, 20, QgsUnitTypes.LayoutMillimeters))
+
+        credit_text = QgsLayoutItemLabel(layout)
+        credit_text.setText(input_credit_text)
+        credit_text.setFont(QFont("Arial", 10))
+        credit_text.adjustSizeToText()
+        layout.addLayoutItem(credit_text)
+        credit_text.attemptMove(QgsLayoutPoint(246, 190, QgsUnitTypes.LayoutMillimeters))
+
+
+        """This exports a Print Layout as an image"""
+        manager = QgsProject.instance().layoutManager()     #this is a reference to the layout Manager, which contains a list of print layouts
+
+        layout = manager.layoutByName(layoutName)         #this accesses a specific layout, by name (which is a string)
+
+        exporter = QgsLayoutExporter(layout)                #this creates a QgsLayoutExporter object
+        exporter.exportToPdf(output_pdf_path, QgsLayoutExporter.PdfExportSettings())
+
 
 
 
