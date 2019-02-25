@@ -117,7 +117,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
 
     
     def processAlgorithm(self, parameters, context, feedback):
-        """This actually does the processing for creating the print layout and exporting as .pdf"""
+        """This actually does the processing for creating the print layout and exporting as .pdf document"""
         #needs all the arguments (self, parameters, context, feedback)
         
         log = feedback.setProgressText
@@ -130,8 +130,8 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         log(f"Title: {input_title}")                       
 
 
-        """This creates a new print layout"""
-        project = QgsProject.instance()             
+        #This creates a new print layout
+        project = context.project()             
         manager = project.layoutManager()           
         layout = QgsPrintLayout(project)            
         layoutName = 'PrintLayout'                 #layoutName is going to be name of Title. Change this later
@@ -147,7 +147,8 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         manager.addLayout(layout)
 
 
-        """This adds a map item to the Print Layout"""
+
+        #This adds a map item to the Print Layout
         map = QgsLayoutItemMap(layout)
         map.setRect(20, 20, 20, 20)  
         
@@ -160,7 +161,27 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
         map.attemptResize(QgsLayoutSize(239, 178, QgsUnitTypes.LayoutMillimeters))
         
-        """This adds labels to the map"""
+        
+        #Gather visible layers in project layer tree and create a list of the map layer objects
+        #Those which are not active (layers_to_remove) will subsequently remove from the legend model
+        tree_layers = project.layerTreeRoot().children()
+        active_layers = [layer.name() for layer in tree_layers if layer.isVisible()]
+        layers_to_remove = [layer for layer in project.mapLayers().values() if layer.name() not in active_layers]
+
+        #This adds a legend item to the Print Layout
+        legend = QgsLayoutItemLegend(layout)
+        layout.addLayoutItem(legend)
+        legend.attemptMove(QgsLayoutPoint(246, 5, QgsUnitTypes.LayoutMillimeters))        
+        #Get reference to existing legend model and root group then remove the unchecked layers
+        legend.setAutoUpdateModel(False) #not sure if this line is required
+        model = legend.model()
+        group = model.rootGroup()
+        for layer in layers_to_remove:
+            group.removeLayer(layer)
+        legend.adjustBoxSize()
+        
+        
+        #This adds labels to the map
         title = QgsLayoutItemLabel(layout)
         title.setText(input_title)
         title.setFont(QFont("Arial", 28))
@@ -183,7 +204,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         credit_text.attemptMove(QgsLayoutPoint(246, 190, QgsUnitTypes.LayoutMillimeters))
 
 
-        """This exports a Print Layout as an image"""
+        #This exports a Print Layout as an image
         manager = QgsProject.instance().layoutManager()     #this is a reference to the layout Manager, which contains a list of print layouts
 
         layout = manager.layoutByName(layoutName)         #this accesses a specific layout, by name (which is a string)
