@@ -63,7 +63,7 @@ class EcoValuatorProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'Key-Log Economics'
+        return 'Key-Log Economics (Dev-Version)'
 
     def name(self):
         """
@@ -72,7 +72,7 @@ class EcoValuatorProvider(QgsProcessingProvider):
 
         This string should be short (e.g. "Lastools") and localised.
         """
-        return self.tr('Key-Log Economics')
+        return self.tr('Key-Log Economics (Dev-Version)')
 
     def longName(self):
         """

@@ -54,7 +54,10 @@ from qgis.core import (QgsProcessing,
                        QgsLayoutItemLabel,
                        QgsLayerTree,
                        QgsRasterBandStats,
-                       QgsLayoutExporter
+                       QgsLayoutExporter,
+                       QgsColorRampShader,
+                       QgsRasterShader,
+                       QgsSingleBandPseudoColorRenderer
                        )
 
 
@@ -159,7 +162,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
 
         #Move & Resize
         map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
-        map.attemptResize(QgsLayoutSize(239, 178, QgsUnitTypes.LayoutMillimeters))
+        map.attemptResize(QgsLayoutSize(234, 178, QgsUnitTypes.LayoutMillimeters))
         
         
         #Gather visible layers in project layer tree and create a list of the map layer objects
@@ -168,10 +171,11 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         active_layers = [layer.name() for layer in tree_layers if layer.isVisible()]
         layers_to_remove = [layer for layer in project.mapLayers().values() if layer.name() not in active_layers]
 
+
         #This adds a legend item to the Print Layout
         legend = QgsLayoutItemLegend(layout)
         layout.addLayoutItem(legend)
-        legend.attemptMove(QgsLayoutPoint(246, 5, QgsUnitTypes.LayoutMillimeters))        
+        legend.attemptMove(QgsLayoutPoint(235, 5, QgsUnitTypes.LayoutMillimeters))        
         #Get reference to existing legend model and root group then remove the unchecked layers
         legend.setAutoUpdateModel(False) #not sure if this line is required
         model = legend.model()
@@ -179,6 +183,59 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         for layer in layers_to_remove:
             group.removeLayer(layer)
         legend.adjustBoxSize()
+        
+        
+        #this symbolizes the raster layer in the map
+        #defining raster layer to work with (active layer in layer panel)
+        layer = iface.activeLayer()
+        print("Active Layer: ", layer.name())
+        provider = layer.dataProvider()
+        extent = layer.extent()
+        #Using RasterBandStats to find range of values in raster layer
+        stats = provider.bandStatistics(1, QgsRasterBandStats.All) 
+        min_val = stats.minimumValue            #minimum pixel value in layer
+        max_val = stats.maximumValue            #maximum pixel value in layer
+        print("min value =", min_val)
+        print("max value =", max_val)
+
+        value_range = list(range(int(min_val), int(max_val+1)))           #Range of values in raster layer. Without +1 doesn't capture highest value
+        value_range.sort()
+        for value in value_range:                   #deletes 0 value from value range so as not to skew shading in results
+            if value < stats.minimumValue:
+                del value
+
+        #we will categorize pixel values into 5 quintiles, based on value_range of raster layer
+        #defining min and max values for each quintile. 
+        #Also, values are rounded to 2 decimal places
+        first_quintile_max = round(numpy.percentile(value_range, 20), 2)
+        first_quintile_min = round(min_val, 2)
+        second_quintile_max = round(numpy.percentile(value_range, 40), 2)
+        second_quintile_min = round((first_quintile_max + .01), 2)
+        third_quintile_max = round(numpy.percentile(value_range, 60), 2)
+        third_quintile_min = round((second_quintile_max + .01), 2)
+        fourth_quintile_max = round(numpy.percentile(value_range, 80), 2)
+        fourth_quintile_min = round((third_quintile_max + .01), 2)
+        fifth_quintile_max = round(numpy.percentile(value_range, 100), 2)
+        fifth_quintile_min = round((fourth_quintile_max + .01), 2)
+
+
+        #builds raster shader with colors_list. 
+        raster_shader = QgsColorRampShader()
+        raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
+        colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
+                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204, 219, 255), f"{first_quintile_min} - {first_quintile_max}"), \
+                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153, 184, 255), f"{second_quintile_min} - {second_quintile_max}"), \
+                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(102, 148, 255), f"{third_quintile_min} - {third_quintile_max}"), \
+                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(51, 113, 255), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
+                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0, 77, 255), f"{fifth_quintile_min} - {fifth_quintile_max}")]
+
+        raster_shader.setColorRampItemList(colors_list)         #applies colors_list to raster_shader
+        shader = QgsRasterShader()
+        shader.setRasterShaderFunction(raster_shader)       
+
+        renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)    #renders selected raster layer
+        layer.setRenderer(renderer)
+        layer.triggerRepaint()
         
         
         #This adds labels to the map
@@ -211,8 +268,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
 
         exporter = QgsLayoutExporter(layout)                #this creates a QgsLayoutExporter object
         exporter.exportToPdf(output_pdf_path, QgsLayoutExporter.PdfExportSettings())
-
-
 
 
         results = {}                    #All I know is processAlgorithm wants to return a dictionary

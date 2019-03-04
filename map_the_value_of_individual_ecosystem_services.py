@@ -36,6 +36,7 @@ import processing
 
 from os.path import splitext
 
+from qgis.utils import *
 from PyQt5.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
@@ -48,7 +49,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterNumber,
                        QgsProcessingOutputLayerDefinition,
                        QgsProcessingParameterEnum,
-                       QgsMapLayerStyle
+                       QgsMapLayerStyle,
+                       QgsProject
                       )
 
 from .appinter import (Raster, App)
@@ -62,7 +64,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     INPUT_NODATA_VALUE = 'INPUT_NODATA_VALUE'
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, other', 'erosion control', 'food/nutrition', 'medicinal', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'renewable energy','soil formation','waste assimilation', 'water supply']
+    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'erosion control', 'food/nutrition', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation','waste assimilation', 'water supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
     STATS = ['min', 'mean', 'max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
@@ -267,8 +269,22 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                 return result
             output_array[grid == key] = value
         log(self.tr("Values mapped"))
-        log(self.tr("Saving output raster ..."))
+        
         Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
+        
+        log(self.tr("Reclassifying 255 (no data value) to 0 with GDAL: Raster Calculator."))
+        
+        parameters = {'INPUT_A' : output_raster_destination,
+                      'BAND_A' : 1,
+                      'FORMULA' : '(A != 255) * A',
+                      'OUTPUT' : output_raster_destination}
+        
+        processing.run('gdal:rastercalculator', parameters)
+        
+        log(self.tr(f"Adding final raster to map."))
+        #need to add result from gdal:rastercalculator to map (doesn't happen automatically)
+        iface.addRasterLayer(output_raster_destination)
+        
         log(self.tr("Done!\n"))
 
         # Return the results of the algorithm. In this case our only result is
@@ -279,6 +295,15 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         # or output names.
         return result
 
+
+    def flags(self):
+        """
+        From documentation: Algorithm is not thread safe and cannot be run in a
+        background thread, e.g. algorithms which manipulate the current project,
+        layer selections, or with external dependencies which are not thread safe.
+        """
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
+
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -287,7 +312,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Step 2: Map the Value of Individual Ecosystem Services'
+        return 'Step 2: Map the value of individual ecosystem services'
 
     def displayName(self):
         """
