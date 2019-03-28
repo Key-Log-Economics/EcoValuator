@@ -61,7 +61,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
-    INPUT_NODATA_VALUE = 'INPUT_NODATA_VALUE'
+    INPUT_NODATA_VALUE = 255                    #No Data value will always be 255
     INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
     INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'erosion control', 'food/nutrition', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation','waste assimilation', 'water supply']
@@ -79,23 +79,6 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
                 self.tr('Input NLCD raster')
-            )
-        )
-
-        # Add a parameter where the user can specify what the nodata value of
-        # the raster they're inputting is.
-        # Must be an integer
-        # Default is 255
-        # This will be used later to make sure that any pixels in the incoming rasterany
-        # that have this value will continue to have this value in the output rasterself.
-        # It's also used to give this value to any pixels that would otherwise be Null
-        # in the output raster
-        self.addParameter(
-            QgsProcessingParameterNumber(
-                self.INPUT_NODATA_VALUE,
-                self.tr('Nodata value of input raster'),
-                QgsProcessingParameterNumber.Integer,
-                255
             )
         )
 
@@ -139,7 +122,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 
         log = feedback.setProgressText
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        input_nodata_value = self.parameterAsInt(parameters, self.INPUT_NODATA_VALUE, context)
+        input_nodata_value = self.INPUT_NODATA_VALUE
         input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
         input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)

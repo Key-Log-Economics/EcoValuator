@@ -76,7 +76,8 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
     INPUT_TITLE = 'INPUT_TITLE'
     INPUT_SUBTITLE = 'INPUT_SUBTITLE'
     INPUT_CREDIT_TEXT = 'INPUT_CREDIT_TEXT'
-    OUTPUT_PDF_PATH = 'OUTPUT PDF PATH'
+    OUTPUT_PDF_PATH = 'OUTPUT_PDF_PATH'
+    OUTPUT_PDF_FILENAME_DEFAULT = 'Choose file path for pdf output'
     
     def initAlgorithm(self, config):
         """
@@ -113,7 +114,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.OUTPUT_PDF_PATH,
-                self.tr('Choose file path for pdf output'),
+                self.tr(self.OUTPUT_PDF_FILENAME_DEFAULT),
                 ".pdf"
             )
         )

@@ -108,14 +108,14 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.CLIPPED_RASTER,
-                self.tr('Clipped raster layer'),
-                ".tif"
+                self.tr('Clipped raster layer')
             )
         )
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
-                self.tr('Place to save intermediate html file')
+                self.tr('Place to save intermediate html metadata file (optional)'),
+                ".html"
             )
         )
         self.addParameter(
@@ -132,6 +132,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         log = feedback.setProgressText
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+#        output_esv_table = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context)
 
         # Check that the input raster has been loaded correctly
         if not input_raster.isValid():
