@@ -110,8 +110,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
-                self.tr(self.OUTPUT_RASTER_FILENAME_DEFAULT),
-                ".tif"
+                self.tr(self.OUTPUT_RASTER_FILENAME_DEFAULT)
             )
         )
 

@@ -271,7 +271,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         exporter.exportToPdf(output_pdf_path, QgsLayoutExporter.PdfExportSettings())
 
 
-        results = {}                    #All I know is processAlgorithm wants to return a dictionary
+        results = {}                    #The processAlgorithm wants to return a dictionary. We don't actually need to do this so instead we return an empty one
         return results
 
     def flags(self):

@@ -118,12 +118,12 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
                 ".html"
             )
         )
-        self.addParameter(
-            QgsProcessingParameterFeatureSink(
-                self.OUTPUT_ESV_TABLE,
-                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
-            )
-        )
+#        self.addParameter(
+#            QgsProcessingParameterFeatureSink(
+#                self.OUTPUT_ESV_TABLE,
+#                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
+#            )
+#        )
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -132,7 +132,6 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         log = feedback.setProgressText
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-#        output_esv_table = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context)
 
         # Check that the input raster has been loaded correctly
         if not input_raster.isValid():
@@ -267,6 +266,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         output_esv_table_fields.append(QgsField("total_min"))
         output_esv_table_fields.append(QgsField("total_mean"))
         output_esv_table_fields.append(QgsField("total_max"))
+        log("Failing after line 269")
 
         # Append input raster filename to end of output esv table filename
         if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
