@@ -118,12 +118,12 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
                 ".html"
             )
         )
-#        self.addParameter(
-#            QgsProcessingParameterFeatureSink(
-#                self.OUTPUT_ESV_TABLE,
-#                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
-#            )
-#        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT_ESV_TABLE,
+                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
+            )
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
         """
