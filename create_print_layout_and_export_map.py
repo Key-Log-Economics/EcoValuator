@@ -77,8 +77,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
     INPUT_TITLE = 'INPUT_TITLE'
     INPUT_SUBTITLE = 'INPUT_SUBTITLE'
     INPUT_CREDIT_TEXT = 'INPUT_CREDIT_TEXT'
-    INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'erosion control', 'food/nutrition', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'soil formation','waste assimilation', 'water supply']
     OUTPUT_PDF_PATH = 'OUTPUT_PDF_PATH'
     OUTPUT_PDF_FILENAME_DEFAULT = 'Choose file path for pdf output'
     
@@ -113,16 +111,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
             )
         )
 
-        #User chooses ecosystem service. This is to create different colors for different ecosystem services
-        #this method seemed far easier than returning this information from step 2
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.INPUT_ESV_FIELD,
-                self.tr('Ecosystem service of interest'),
-                self.INPUT_ESV_FIELD_OPTIONS
-            )
-        )
-
         #Add file path as input
         self.addParameter(
             QgsProcessingParameterFileDestination(
@@ -134,22 +122,19 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
 
     
     def processAlgorithm(self, parameters, context, feedback):
-        """This actually does the processing for creating the print layout and exporting as .pdf document"""
+        """This actually creates the print layout and exporting as .pdf document"""
         
         log = feedback.setProgressText
         
         input_title = self.parameterAsString(parameters, self.INPUT_TITLE, context)
         input_subtitle = self.parameterAsString(parameters, self.INPUT_SUBTITLE, context)
         input_credit_text = self.parameterAsString(parameters, self.INPUT_CREDIT_TEXT, context)
-        input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
-        input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         output_pdf_path = self.parameterAsString(parameters, self.OUTPUT_PDF_PATH, context)
         
 
         log(f"Title: {input_title}")    
         log(f"Subtitle: {input_subtitle}")
         log(f"Credit Text: {input_credit_text}")
-        log(f"ESV chosen: {input_esv_field}")
         log(f"Output pdf path: {output_pdf_path}")                 
 
         #This creates a new print layout
@@ -169,7 +154,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         manager.addLayout(layout)
 
 
-
         #This adds a map item to the Print Layout
         map = QgsLayoutItemMap(layout)
         map.setRect(20, 20, 20, 20)  
@@ -181,7 +165,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
 
         #Move & Resize
         map.attemptMove(QgsLayoutPoint(5, 27, QgsUnitTypes.LayoutMillimeters))
-        map.attemptResize(QgsLayoutSize(234, 178, QgsUnitTypes.LayoutMillimeters))
+        map.attemptResize(QgsLayoutSize(218, 178, QgsUnitTypes.LayoutMillimeters))
         
         
         #Gather visible layers in project layer tree and create a list of the map layer objects
@@ -194,7 +178,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         #This adds a legend item to the Print Layout
         legend = QgsLayoutItemLegend(layout)
         layout.addLayoutItem(legend)
-        legend.attemptMove(QgsLayoutPoint(235, 5, QgsUnitTypes.LayoutMillimeters))        
+        legend.attemptMove(QgsLayoutPoint(219, 5, QgsUnitTypes.LayoutMillimeters))        
         #Get reference to existing legend model and root group then remove the unchecked layers
         legend.setAutoUpdateModel(False) #not sure if this line is required
         model = legend.model()
@@ -202,194 +186,6 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         for layer in layers_to_remove:
             group.removeLayer(layer)
         legend.adjustBoxSize()
-        
-        
-        #this symbolizes the raster layer in the map
-        #defining raster layer to work with (active layer in layer panel)
-        layer = iface.activeLayer()
-        print("Active Layer: ", layer.name())
-        provider = layer.dataProvider()
-        extent = layer.extent()
-        #Using RasterBandStats to find range of values in raster layer
-        stats = provider.bandStatistics(1, QgsRasterBandStats.All) 
-        min_val = stats.minimumValue            #minimum pixel value in layer
-        max_val = stats.maximumValue            #maximum pixel value in layer
-        print("min value =", min_val)
-        print("max value =", max_val)
-
-        value_range = list(range(int(min_val), int(max_val+1)))           #Range of values in raster layer. Without +1 doesn't capture highest value
-        value_range.sort()
-        for value in value_range:                   #deletes 0 value from value range so as not to skew shading in results
-            if value < stats.minimumValue:
-                del value
-
-        #we will categorize pixel values into 5 quintiles, based on value_range of raster layer
-        #defining min and max values for each quintile. 
-        #Also, values are rounded to 2 decimal places
-        first_quintile_max = round(numpy.percentile(value_range, 20), 2)
-        first_quintile_min = round(min_val, 2)
-        second_quintile_max = round(numpy.percentile(value_range, 40), 2)
-        second_quintile_min = round((first_quintile_max + .01), 2)
-        third_quintile_max = round(numpy.percentile(value_range, 60), 2)
-        third_quintile_min = round((second_quintile_max + .01), 2)
-        fourth_quintile_max = round(numpy.percentile(value_range, 80), 2)
-        fourth_quintile_min = round((third_quintile_max + .01), 2)
-        fifth_quintile_max = round(numpy.percentile(value_range, 100), 2)
-        fifth_quintile_min = round((fourth_quintile_max + .01), 2)
-
-
-        #builds raster shader with colors_list. Most ESVs have unique colors. 
-        
-        #green color ramp
-        if input_esv_field == 'aesthetic':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204, 255, 204), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153, 255, 153), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51, 255, 51), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0, 204, 0), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0, 102, 0), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-
-        #light blue color ramp
-        elif input_esv_field == 'air quality':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204, 255, 255), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153, 255, 255), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51, 255, 255), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0, 204, 204), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0,102,102), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-            
-        #green color ramp
-        elif input_esv_field == 'biodiversity':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204, 255, 229), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153, 255, 204), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51, 255, 153), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0, 204, 102), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0, 102, 51), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #orange color ramp
-        elif input_esv_field == 'climate regulation':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(255, 229, 204), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(255, 204, 153), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(255, 153, 51), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(204, 102, 0), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(102, 51, 0), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #brown color ramp
-        elif input_esv_field == 'erosion control':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(220,187,148), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(198,168,134), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(169,144,115), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(138,117,93), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(100,85,67), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #pink color ramp
-        elif input_esv_field == 'food/nutrition':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(255,204,229), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(255,153,204), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(255,51,153), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(204,0,102), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(102,0,51), f"{fifth_quintile_min} - {fifth_quintile_max}")]        
-
-        #yellow color ramp
-        elif input_esv_field == 'pollination':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(255,255,204), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(255,255,153), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(255,255,51), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(204,204,0), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(102,102,0), f"{fifth_quintile_min} - {fifth_quintile_max}")]        
-
-        #gray/black color ramp
-        elif input_esv_field == 'protection from extreme events':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(224,224,224), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(192,192,192), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(128,128,128), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(64,64,64), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0,0,0), f"{fifth_quintile_min} - {fifth_quintile_max}")]       
-        
-        #purple color ramp
-        elif input_esv_field == 'raw materials':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(229,204,255), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(204,153,255), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(153,51,255), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(102,0,204), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(51,0,102), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #red color ramp
-        elif input_esv_field == 'recreation':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(255,102,102), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(255,51,51), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(255,0,0), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(204,0,0), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(153,0,0), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #brown color ramp
-        elif input_esv_field == 'soil formation':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(220,187,148), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(198,168,134), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(169,144,115), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(138,117,93), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(100,85,67), f"{fifth_quintile_min} - {fifth_quintile_max}")]       
-        
-        #blue/purple color ramp
-        elif input_esv_field == 'waste assimilation':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204,204,255), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153,153,255), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51,51,255), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0,0,204), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0,0,102), f"{fifth_quintile_min} - {fifth_quintile_max}")]
-        
-        #medium blue color ramp
-        elif input_esv_field == 'water supply':
-            raster_shader = QgsColorRampShader()
-            raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204,229,255), f"{first_quintile_min} - {first_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153,204,255), f"{second_quintile_min} - {second_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51,153,205), f"{third_quintile_min} - {third_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0,102,204), f"{fourth_quintile_min} - {fourth_quintile_max}"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max, QColor(0,51,102), f"{fifth_quintile_min} - {fifth_quintile_max}")]       
-        
-        raster_shader.setColorRampItemList(colors_list)         #applies colors_list to raster_shader
-        shader = QgsRasterShader()
-        shader.setRasterShaderFunction(raster_shader)       
-
-        renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)    #renders selected raster layer
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
         
         
         #This adds labels to the map
@@ -412,7 +208,23 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         credit_text.setFont(QFont("Arial", 10))
         credit_text.adjustSizeToText()
         layout.addLayoutItem(credit_text)
-        credit_text.attemptMove(QgsLayoutPoint(246, 190, QgsUnitTypes.LayoutMillimeters))
+        credit_text.attemptMove(QgsLayoutPoint(219, 190, QgsUnitTypes.LayoutMillimeters))
+        
+        #this creates credit text (line1) in bottom right corner of map layout giving credit to Key-Log Economics
+        keylog_credits1 = QgsLayoutItemLabel(layout)
+        keylog_credits1.setText("Created using EcoValuator Plugin")
+        keylog_credits1.setFont(QFont("Arial", 10))
+        keylog_credits1.adjustSizeToText()
+        layout.addLayoutItem(keylog_credits1)
+        keylog_credits1.attemptMove(QgsLayoutPoint(219, 195, QgsUnitTypes.LayoutMillimeters))
+
+        #this creates credit text (line2) in bottom right corner of map layout giving credit to Key-Log Economics
+        keylog_credits2 = QgsLayoutItemLabel(layout)
+        keylog_credits2.setText("by Key-Log Economics")
+        keylog_credits2.setFont(QFont("Arial", 10))
+        keylog_credits2.adjustSizeToText()
+        layout.addLayoutItem(keylog_credits2)
+        keylog_credits2.attemptMove(QgsLayoutPoint(219, 200, QgsUnitTypes.LayoutMillimeters))
 
 
         #This exports a Print Layout as an image
@@ -423,9 +235,10 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         exporter = QgsLayoutExporter(layout)                #this creates a QgsLayoutExporter object
         exporter.exportToPdf(output_pdf_path, QgsLayoutExporter.PdfExportSettings())
 
+        log("Done!")
 
-        results = {}                    #The processAlgorithm wants to return a dictionary. We don't actually need to do this so instead we return an empty one
-        return results
+        result = {}                    #The processAlgorithm wants to return a dictionary. We don't actually need to do this so instead we return an empty one
+        return result
 
     def flags(self):
         """

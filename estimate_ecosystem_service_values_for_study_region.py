@@ -121,7 +121,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_ESV_TABLE,
-                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
+                self.tr('Output ESV Table (Leave Blank)')
             )
         )
 
