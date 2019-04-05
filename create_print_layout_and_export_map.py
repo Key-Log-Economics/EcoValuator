@@ -141,7 +141,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         project = context.project()             
         manager = project.layoutManager()           
         layout = QgsPrintLayout(project)            
-        layoutName = 'PrintLayout'                 #layoutName is going to be name of Title. Change this later
+        layoutName = 'EcoValuator Layout'                 #layoutName is going to be name of Title. Change this later
 
         layouts_list = manager.printLayouts()
         for layout in layouts_list:
@@ -288,7 +288,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This step takes an output raster layer from step 2 as input and automatically produces a finished map output as a .pdf. The output will contain the map (zoomed to the extent of your current screen) and a legend which contains the active layers in the project (***NEEDS WORK***)")
+        return self.tr("This step produces a finished map output as a .pdf. The output will contain the map, legend, title, subtitle, and credit text. \n *The map will display the extent of the active window in your project. If you are zoomed out, your map will be small. Experiment to get the right size. \n *The legend will contain all active layers in your project (including tables). To remove something from the legend, turn it off in the layers panel or remove it from the project. \n Title: Add a title to your map. This will appear in the top left corner of the output. [This is optional] \n Subtitle: Add a subtitle to the map. This will appear in the output directly below the title. [This is optional] \n Credit Text: Add credits text to the map. This will appear in the bottom right corner of the output. [This is Optional] \n Choose file path for pdf output: Choose file path for pdf output. Make sure to specify .pdf file extension for output. \n *Note: You can customize your own print layout. At the top of the screen look under 'Project' and 'Layouts'. You will have a print layout titled 'EcoValuator Layout', which you can modify. ")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
@@ -299,7 +299,7 @@ class CreatePrintLayoutAndExportMap(QgsProcessingAlgorithm):
         location that will be followed when the user clicks the Help button
         in the algorithm's UI.
         """
-        return "http://keylogeconomics.com/ecovaluator-help/"
+        return "http://www.keylogeconomics.com/ecovaluator.html"
 
     def createInstance(self):
         return CreatePrintLayoutAndExportMap()

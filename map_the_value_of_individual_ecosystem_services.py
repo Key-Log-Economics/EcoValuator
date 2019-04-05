@@ -106,7 +106,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_ESV_STAT,
-                self.tr('ES value level'),
+                self.tr('Ecosystem Service Value Level'),
                 self.STATS
             )
         )
@@ -569,13 +569,13 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This algorithm takes as an Input the clipped NLCD raster from Step 1 and an Input ESV Table,which is the output table from Step 1, and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n Input NLCD raster: This should be the output clipped raster from Step 1, an NLCD layer clipped by a region of interest. \n Input ESV table: This should be the output ESV table from Step 1 and should not be altered. \n The next two fields, “Ecosystem service of interest” and “ESV value level”, specify the ecosystem service you want to map and whether you want to map minimum, average, or maximum values from the ESV table. \n See “Help” for more information on value origins and ecosystem service descriptions.")
+        return self.tr("This algorithm takes as an Input the clipped NLCD raster from Step 1 and an Input ESV Table, which is the output table from Step 1, and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The new raster is then  given a descriptive name and colored according to the ecosystem service chosen. It's values are divided into even quintiles to emphasize breaks in the data. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n Input NLCD raster: This should be the output clipped raster from Step 1, an NLCD layer clipped by a region of interest. \n Input ESV table: This should be the output ESV table from Step 1 and should not be altered. \n Ecosystem service of interest: Specify the ecosystem service you want to map. \n Ecosystem Service Value Level: Choose if you want to map minimum, mean, or maximum values from the ESV table. \n Output esv Raster: Specify an output location for your ESV raster. \n See “Help” for more information on value origins and ecosystem service descriptions.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def helpUrl(self):
-        return "http://keylogeconomics.com/ecovaluator-help/"
+        return "http://www.keylogeconomics.com/ecovaluator.html"
 
     def createInstance(self):
         return MapTheValueOfIndividualEcosystemServices()
