@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 """
 /***************************************************************************
@@ -108,20 +108,20 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.CLIPPED_RASTER,
-                self.tr('Clipped raster layer'),
-                ".tif"
+                self.tr('Clipped raster layer')
             )
         )
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.HTML_OUTPUT_PATH,
-                self.tr('Place to save intermediate html file')
+                self.tr('Place to save intermediate html metadata file (optional)'),
+                ".html"
             )
         )
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_ESV_TABLE,
-                self.tr(self.OUTPUT_ESV_TABLE_FILENAME_DEFAULT)
+                self.tr('Output ESV Table (Leave Blank)')
             )
         )
 
@@ -266,6 +266,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         output_esv_table_fields.append(QgsField("total_min"))
         output_esv_table_fields.append(QgsField("total_mean"))
         output_esv_table_fields.append(QgsField("total_max"))
+        log("Failing after line 269")
 
         # Append input raster filename to end of output esv table filename
         if isinstance(parameters['OUTPUT_ESV_TABLE'], QgsProcessingOutputLayerDefinition):
@@ -389,7 +390,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This algorithm does 3 things:\n 1. Clips the Input NLCD raster by the user-supplied Input mask layer for the region of interest.\n 2. Calculates how much area each type of land cover accounts for in the now-clipped NLCD raster.\n 3. Multiplies those areas by each of the associated per-hectare ecosystem service values (ESV) in the Input table of ESV research data.\n Outputs include the clipped raster and a table of aggregate ESV for each land cover type in the study region. \n Once users have added the proper NLCD raster data* and their study region polygon layer* to the QGIS project, they have the following options: \n The input 2011 NLCD raster (https://www.mrlc.gov/nlcd2011.php)*: This is a copy of the National Land Cover Database (2011) depicting land cover in 16 types at 30m resolution for the conterminous US.\n Input mask layer*: This vector data should describe the user's area of interest or study region. The algorithm clips the NLCD data to this region. \n *Both the NLCD and input mask layer must be in CRS: EPSG: 102003 (https://epsg.io/102003) (USA Contiguous Albers Equal Area Conic) in order to successfully execute the clip to the mask layer. Users can download a copy of the NLCD data the proper CRS here (https://www.dropbox.com/sh/vz0c41vuqt6et9j/AACxahJHy55JUGvZPUsmhdWwa?dl=0). \n Input table of ESV research data: This table of data comes pre-loaded with the plugin and provides the per-hectare-per-year minimum, average, and maximum dollar value estimates for each land cover type and ecosystem service. These figures are also adjusted for the exchange rate and inflation. These figures are derived from an extensive literature review. See Help for details.\n Clipped raster layer: This output is the result of the clipping process that is the first step of the algorithm. \n Place to save intermediate html file: If you'd like to save an html file with the number of pixels and total area (in m^2) for each different pixel value in the input raster [This is optional].\n Output ESV table: This table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values based on the minimum, mean, and maximum values per hectare from the ESV research data. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. It simply indicates a current lack of primary studies to determine the dollar amount. (See 'Help' for more information on the methods and sources behind the ESV table.)")
+        return self.tr("This algorithm does 3 things:\n 1. Clips the Input NLCD raster by the user-supplied Input mask layer for the region of interest.\n 2. Calculates how much area each type of land cover accounts for in the now-clipped NLCD raster.\n 3. Multiplies those areas by each of the associated per-hectare ecosystem service values (ESV) in the Input table of ESV research data.\n Outputs include the clipped raster and a table of aggregate ESV for each land cover type in the study region. \n Once users have added the proper NLCD raster data* and their study region polygon layer* to the QGIS project, they have the following options: \n The input 2016 NLCD raster (https://www.mrlc.gov/national-land-cover-database-nlcd-2016)*: This is a copy of the National Land Cover Database (2016) depicting land cover in 16 types at 30m resolution for the conterminous US.\n Input mask layer: This should be a vector data layer of the user's area of interest or study region. The algorithm clips the NLCD data to this region. \n *Both the NLCD and input mask layer must be in CRS: EPSG: 102003 (https://epsg.io/102003) (USA Contiguous Albers Equal Area Conic) in order to successfully execute the clip to the mask layer. \n Input table of ESV research data: This table of data comes pre-loaded with the plugin and provides the per-hectare-per-year minimum, average, and maximum dollar value estimates for each land cover type and ecosystem service. These figures are also adjusted for the exchange rate and inflation. These figures are derived from an extensive literature review. See Help for details.\n Clipped raster layer: This output is the result of the clipping process that is the first step of the algorithm. \n Place to save intermediate html file: If you'd like to save an html file with the number of pixels and total area (in m^2) for each different pixel value in the input raster. Make sure to specify .html file extension. [This is optional].\n Output ESV table: \n (LEAVE THIS FIELD BLANK) \n This table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values based on the minimum, mean, and maximum values per hectare from the ESV research data. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. It simply indicates a current lack of primary studies to determine the dollar amount. (See 'Help' for more information on the methods and sources behind the ESV table.)")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
@@ -400,7 +401,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         location that will be followed when the user clicks the Help button
         in the algorithm's UI.
         """
-        return "http://keylogeconomics.com/ecovaluator-help/"
+        return "http://www.keylogeconomics.com/ecovaluator.html"
 
     def createInstance(self):
         return EstimateEcosystemServiceValuesForStudyRegion()
