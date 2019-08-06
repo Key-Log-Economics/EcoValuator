@@ -319,6 +319,9 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 
         #builds raster shader with colors_list. Most ESVs have unique colors. 
         
+        
+        
+        
         #green color ramp
         if input_esv_field == 'aesthetic':
             raster_shader = QgsColorRampShader()

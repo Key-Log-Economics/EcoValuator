@@ -133,12 +133,6 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
 
-        # Check that the input raster has been loaded correctlyvalidate
-        if not input_raster.isValid():
-            error_message = "Layer failed to load."
-            feedback.reportError(error_message)
-            return {'error': error_message}
-
         # Set the LULC data source
         input_lulc_source_index = self.parameterAsEnum(parameters, self.INPUT_LULC_SOURCE, context)
         input_lulc_source = self.LULC_SOURCES[input_lulc_source_index]
