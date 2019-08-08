@@ -3,14 +3,18 @@ from osgeo import gdal
 import numpy as np
 import os
 from collections import defaultdict
+
 from qgis.core import (QgsUnitTypes,
                        QgsRasterLayer,  
                        QgsFields,
                        QgsField,
                        QgsFeature,
                        QgsFeatureSink)
+                       
 
-from PyQt5.QtCore import QVariant
+from PyQt5.QtCore import (QVariant,
+                          QCoreApplication,
+                          QFileInfo)
 
 class LULC_dataset:
     """Custom class to handle summarizing LULC rasters with ecosystem service values"""
@@ -28,6 +32,39 @@ class LULC_dataset:
         ras_summary = self.summarize_raster_values()
         self.ras_summary_array = ras_summary['array']
         self.ras_summary_dict = ras_summary['dict']
+
+    def check_pixel_size(self, input_raster):
+        """Checks to make sure pixel size of input raster are valid 30x30m pixels"""
+        units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
+        units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
+        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
+            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
+                feedback = "Your input raster pixels weren't exactly 30x30 meters, but were close enough that the program will continue to run. Your input raster pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + "."
+                return feedback
+            else:
+                error_message = "The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + "."
+                return {'error': error_message}
+        else:
+            feedback = "The input raster's pixel size is correct: 30x30. Check"
+            return feedback
+        
+    def esv_research_data_list(self, input_esv_data_location, input_esv_file):
+        input_esv_table = []
+        with open(os.path.join(input_esv_data_location, input_esv_file), newline='') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                input_esv_table.append(row)
+                
+        return input_esv_table
+    
+    def check_number_of_columns_in_esv_table(self, esv_table):
+        if len(esv_table[0]) != 6:
+            error_message = "The Input table of ESV research data should have 6 columns, the one you input has " + str(len(esv_table[0]))
+            return {'error': error_message}
+        else:
+            message = "Input table of ESV research data has 6 columns. Check"
+            return message  
+        
 
     def is_valid(self):
         """Check that the raster is valid for the selected source type
@@ -238,3 +275,11 @@ class LULC_dataset:
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
         return(True)
+        
+        
+    def build_color_ramp(self, input_esv_field):
+    	"""Gets input_esv_field string and returns custom color ramp based on that input. Each value range is broken into 5 quintiles and each
+    	quintile has a discrete color along a spectrum/color ramp (light green to dark green for example). Hex codes are used to for each color. Some 
+    	ecosystem services naturally lent themselves to a color choice (ex: biodiversity = green color ramp). Others were just random colors that 
+    	had not been used yet."""
+    	pass

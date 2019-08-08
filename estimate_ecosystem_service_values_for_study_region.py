@@ -1,4 +1,5 @@
-﻿# -*- coding: utf-8 -*-
+﻿#NEW
+# -*- coding: utf-8 -*-
 
 """
 /***************************************************************************
@@ -31,6 +32,7 @@ __revision__ = '$Format:%H$'
 
 import os
 import processing
+import csv
 
 from PyQt5.QtCore import (QCoreApplication,
                           QFileInfo
@@ -132,58 +134,77 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         log = feedback.setProgressText
 
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
 
-        # Set the LULC data source
+        # Set the LULC (land use land cover) data source
         input_lulc_source_index = self.parameterAsEnum(parameters, self.INPUT_LULC_SOURCE, context)
         input_lulc_source = self.LULC_SOURCES[input_lulc_source_index]
         feedback.pushDebugInfo(f'Processing for {input_lulc_source} data')
- 
-        input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
+         
+        #Check to make sure input raster has the right pixel size
+        pixel_size = LULC_dataset.check_pixel_size(input_lulc_source, input_raster)
+        log(pixel_size)
+        
+        #Get the input table of esv research data into a list of lists so we can work with it
+        input_esv_index = self.parameterAsEnum(parameters, self.INPUT_ESV, context)
+        input_esv_data_location = __esv_data_location__
+        input_esv_file = self.ESV_CSVS[input_esv_index]
+        
+        esv_table = LULC_dataset.esv_research_data_list(input_lulc_source, input_esv_data_location, input_esv_file)
+        log('ESV list of research data created')
+        
+        #Check to make sure input table of esv research data has at least 5 columns
+        length_check = LULC_dataset.check_number_of_columns_in_esv_table(self, esv_table)
+        log(length_check)
+        
+        #Check to make sure the input esv table has correct NLCD or NALCMS land use codes
+        ####START HERE
+        
         
         # Create LULC_dataset object from input raster
 
-        # Append input raster and input vector filenames to end of output clipped raster filename
-        if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
-            dest_name = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
-            setattr(parameters['CLIPPED_RASTER'], 'destinationName', dest_name)
-        elif isinstance(parameters['CLIPPED_RASTER'], str):  # for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
-            if parameters['CLIPPED_RASTER'][0:7] == "memory:":
-                parameters['CLIPPED_RASTER'] = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
-
-        clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
-
-        # Clip the input raster by the input mask layer (vector)
-        log("Clipping raster...")
-        processing.run("gdal:cliprasterbymasklayer", {'INPUT': input_raster, 'MASK': input_vector.source(), 'ALPHA_BAND': False, 'CROP_TO_CUTLINE': True, 'KEEP_RESOLUTION': False, 'DATA_TYPE': 0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
-        log("Done clipping raster.")
-
-        # Summarize the raster, i.e. calculate the pixel counts and total area for each NLCD value
-        log("Summarizing raster...")
-        clipped_raster = QgsRasterLayer(clipped_raster_destination)
-
-        ##----Make instance of LULC dataset from clipped layer here--##
-        print('making LULC dataset type')
-        LULC_clipped_raster = LULC_dataset(input_lulc_source, clipped_raster, __esv_data_location__ )
-
-        # Check that raster is valid for given data source
-        valid = LULC_clipped_raster.is_valid()
-        if isinstance(valid, str):
-            #If is instance returns a string it is not valid. The string contains the error message
-            error_message = valid
-            feedback.reportError(error_message)
-            return {'error': error_message}
-
-        print('Building output table')
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, LULC_clipped_raster.get_output_QgsFields())
-
-        result = {self.CLIPPED_RASTER: clipped_raster_destination,
-                  self.OUTPUT_ESV_TABLE: dest_id}
-
-        LULC_clipped_raster.create_output_table(sink)
-
-
-        # Return the results of the algorithm, which includes the clipped raster
-        # and the output esv table
+#        # Append input raster and input vector filenames to end of output clipped raster filename
+#        if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
+#            dest_name = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
+#            setattr(parameters['CLIPPED_RASTER'], 'destinationName', dest_name)
+#        elif isinstance(parameters['CLIPPED_RASTER'], str):  # for some reason when running this as part of a model parameters['OUTPUT_ESV_TABLE'] isn't a QgsProcessingOutputLayerDefinition object, but instead is just a string
+#            if parameters['CLIPPED_RASTER'][0:7] == "memory:":
+#                parameters['CLIPPED_RASTER'] = input_raster.name() + "-CLIPPED_BY-" + input_vector.name()
+#
+#        clipped_raster_destination = self.parameterAsOutputLayer(parameters, self.CLIPPED_RASTER, context)
+#
+#        # Clip the input raster by the input mask layer (vector)
+#        log("Clipping raster...")
+#        processing.run("gdal:cliprasterbymasklayer", {'INPUT': input_raster, 'MASK': input_vector.source(), 'ALPHA_BAND': False, 'CROP_TO_CUTLINE': True, 'KEEP_RESOLUTION': False, 'DATA_TYPE': 0, 'OUTPUT': clipped_raster_destination}, context=context, feedback=feedback)
+#        log("Done clipping raster.")
+#
+#        # Summarize the raster, i.e. calculate the pixel counts and total area for each NLCD value
+#        log("Summarizing raster...")
+#        clipped_raster = QgsRasterLayer(clipped_raster_destination)
+#
+#        ##----Make instance of LULC dataset from clipped layer here--##
+#        print('making LULC dataset type')
+#        LULC_clipped_raster = LULC_dataset(input_lulc_source, clipped_raster, __esv_data_location__ )
+#
+#        # Check that raster is valid for given data source
+#        valid = LULC_clipped_raster.is_valid()
+#        if isinstance(valid, str):
+#            #If is instance returns a string it is not valid. The string contains the error message
+#            error_message = valid
+#            feedback.reportError(error_message)
+#            return {'error': error_message}
+#
+#        print('Building output table')
+#        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, LULC_clipped_raster.get_output_QgsFields())
+#
+#        result = {self.CLIPPED_RASTER: clipped_raster_destination,
+#                  self.OUTPUT_ESV_TABLE: dest_id}
+#
+#        LULC_clipped_raster.create_output_table(sink)
+#
+#
+#        # Return the results of the algorithm, which includes the clipped raster
+#        # and the output esv table
         return(result)
 
     def name(self):
