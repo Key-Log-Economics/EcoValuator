@@ -155,15 +155,6 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = {self.OUTPUT_RASTER: output_raster_destination}
 
-        # Check that the input raster is in the right CRS
-        input_raster_crs = input_raster.crs().authid()
-        if input_raster_crs == "EPSG:102003":
-            log("The input raster is in the right CRS: EPSG:102003. Check")
-        else:
-            error_message = "The input raster isn't in the right CRS. It must be in EPSG:102003. The one you input was in " + str(input_raster_crs) + "."
-            feedback.reportError(error_message)
-            log("")
-            return {'error': error_message}
 
         # Check that the input raster has the right pixel size
         units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
@@ -191,7 +182,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             log("Input ESV table has at least 5 columns. Check")
 
         # Check to make sure the input ESV table appears to have columns with ESV stats
-        stats = ['min', 'avg', 'max']                   #changed from 'mean' to 'avg' as 'avg' was already in names of columns
+        stats = ['min', 'mean', 'max']                   #changed from 'mean' to 'avg' as 'avg' was already in names of columns
         input_esv_table_esv_stat_col_names = input_esv_table_col_names[4:]
         input_esv_table_name_stats = []
         for name in input_esv_table_esv_stat_col_names:
