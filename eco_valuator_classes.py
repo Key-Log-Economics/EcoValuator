@@ -2,19 +2,27 @@ import csv
 from osgeo import gdal
 import numpy as np
 import os
+from os.path import splitext
+import processing
+
+
 from collections import defaultdict
-from qgis.core import (QgsUnitTypes,
-                       QgsRasterLayer,  
+from qgis.core import (QgsUnitTypes,  
                        QgsFields,
                        QgsField,
                        QgsFeature,
                        QgsFeatureSink,
                        QgsColorRampShader,
                        QgsRasterShader,
-                       QgsSingleBandPseudoColorRenderer)
+                       QgsSingleBandPseudoColorRenderer,
+                       QgsRasterBandStats,
+                       QgsRasterFileWriter)
 
-from PyQt5.QtCore import QVariant
+from PyQt5.QtCore import QVariant, QCoreApplication
 from PyQt5.QtGui import *
+
+from .appinter import (Raster, App)
+
 
 
 class LULC_dataset:
@@ -243,6 +251,127 @@ class LULC_dataset:
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
         return(True)
+       
+
+    def check_output_format(output_raster_destination):
+        """Check output file format to make sure it is a geotiff"""
+
+        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster_destination)[1])
+        if not output_format or output_format.lower() != "gtiff":
+            error_message = "CRITICAL: Currently only GeoTIFF output format allowed, exiting!"
+            return error_message
+        else:
+            message = "Output file is GeoTIFF. Check"
+            return message
+
+###START HERE
+    def check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):
+        """Checks to make sure all land use codes are valid"""
+        
+        raster_value_mapping_dict = {}
+
+        input_esv_table_features = input_esv_table.getFeatures()
+        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
+
+        for input_esv_table_feature in input_esv_table_features:
+            nlcd_code = str(input_esv_table_feature.attributes()[0])
+#            # Check to make sure this is a legit nlcd code. If it's not throw and error and abort the algorithm
+            if nlcd_code not in nlcd_codes:
+                error_message = "Found a value in the first column of the input ESV table that isn't a legitimate NLCD code: " + str(nlcd_code) + ". All the values in the first column of the input ESV table must be one of these: " + str(nlcd_codes)
+                return error_message  
+            try:
+                selected_esv = input_esv_table_feature.attribute(input_esv_field.lower().replace(" ", "-").replace(",", "") + "_" + input_esv_stat)
+            except KeyError:
+                error_message = ("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
+#                error_message = (f'The input ESV field you specified: {input_esv_field}_{input_esv_stat} does not exist in this dataset. Please enter one of the fields that does exist: \n Input table fields: {str(input_esv_table.fields().names()[4:]}')
+                error_data = ("Input table fields: ", str(input_esv_table.fields().names()[4:]))
+                return error_message, error_data
+            
+#            # If there is no ESV for tis particular NLCD-ES combo Then
+#            # the cell will be Null (i.e. None) and so we're dealing with
+#            # that below by setting the value to 255, which is the value
+#            # of the other cells that don't have values (at least for this
+#            # data)
+
+            if selected_esv == 'None':
+                selected_esv = input_nodata_value
+
+#            # If it's not null then we need to convert the total ESV for
+#            # the whole area covered by that land cover (which is in USD/hectare)
+#            # to the per pixel ESV (USD/pixel)
+            else:
+                num_pixels = int(input_esv_table_feature.attributes()[2])
+                selected_esv = float(selected_esv) / num_pixels
+            raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
+            
+        return raster_value_mapping_dict, nlcd_codes
+
+        
+    def check_esv_table_length(input_esv_table):
+        """Check to make sure the input ESV table has at least 4 columns"""
+        
+        input_esv_table_col_names = input_esv_table.fields().names()
+        if len(input_esv_table_col_names) <= 4:
+            error_message = "The Input ESV table should have at least 5 columns, the one you input only has " + str(len(input_esv_table_col_names))
+            return error_message
+        else:
+            message = "Input ESV table has at least 5 columns. Check"
+            return message, input_esv_table_col_names
+           
+        
+    def check_for_esv_stats(input_esv_table_col_names):
+        """Check to make sure the input ESV table has columns with valid ESV stats"""
+        
+        stats = ['min', 'avg', 'max']                   #changed from 'mean' to 'avg' as 'avg' was already in names of columns
+        input_esv_table_esv_stat_col_names = input_esv_table_col_names[4:]
+        input_esv_table_name_stats = []
+        for name in input_esv_table_esv_stat_col_names:
+            if len(name.split('_', 1)) > 1:
+                input_esv_table_name_stats.append(name.split('_', 1)[1])
+            else:
+                error_message = "One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 5 through the last column should all have an underscore between the ecosystem service and the statistic, e.g. aesthetic_min."
+                return error_message
+            
+        if all(str(i) in stats for i in input_esv_table_name_stats):
+            message = "The table appears to include ESV stats columns. Check"
+            return message
+        else:
+            error_message = "One or more of the columns in your Input ESV table doesn't appear to be an ESV stat. Columns 5 through the last column should all end with \"_min\", \"_avg\", or \"_max\"."
+            return error_message
+
+
+    def compute_range_of_values(layer, provider, extent):
+        """Takes information from active raster layer and uses that to build range of values
+        for that layer. Then breaks values into 5 evenly spaced quintiles (minimum and maximum
+        value for each quintile) and returns those as a tuple."""
+        
+        
+        raster_stats = provider.bandStatistics(1, QgsRasterBandStats.All) 
+        min_val = raster_stats.minimumValue            #minimum pixel value in layer
+        max_val = raster_stats.maximumValue            #maximum pixel value in layer
+
+        value_range = list(range(int(min_val), int(max_val+1)))           #Range of values in raster layer. Without +1 doesn't capture highest value
+        value_range.sort()
+        for value in value_range:                   #deletes 0 value from value range so as not to skew shading in results
+            if value < raster_stats.minimumValue:
+                del value
+
+        #we will categorize pixel values into 5 quintiles, based on value_range of raster layer
+        #defining min and max values for each quintile. 
+        #Also, values are rounded to 2 decimal places
+        first_quintile_max = round(np.percentile(value_range, 20), 2)
+        first_quintile_min = round(min_val, 2)
+        second_quintile_max = round(np.percentile(value_range, 40), 2)
+        second_quintile_min = round((first_quintile_max + .01), 2)
+        third_quintile_max = round(np.percentile(value_range, 60), 2)
+        third_quintile_min = round((second_quintile_max + .01), 2)
+        fourth_quintile_max = round(np.percentile(value_range, 80), 2)
+        fourth_quintile_min = round((third_quintile_max + .01), 2)
+        fifth_quintile_max = round(np.percentile(value_range, 100), 2)
+        fifth_quintile_min = round((fourth_quintile_max + .01), 2)
+
+        return first_quintile_max, first_quintile_min, second_quintile_max, second_quintile_min, third_quintile_max, third_quintile_min, fourth_quintile_max, fourth_quintile_min, fifth_quintile_max, fifth_quintile_min
+        
         
         
     def create_color_ramp_and_shade_output(layer, input_esv_field, first_quintile_max, first_quintile_min, second_quintile_max, second_quintile_min,
