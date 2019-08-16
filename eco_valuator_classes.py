@@ -1,6 +1,7 @@
 import csv
 from osgeo import gdal
 import numpy as np
+from numpy import copy
 import os
 from os.path import splitext
 import processing
@@ -264,7 +265,26 @@ class LULC_dataset:
             message = "Output file is GeoTIFF. Check"
             return message
 
-###START HERE
+
+    def check_for_nlcd_raster(grid, nlcd_codes, input_nodata_value, raster_value_mapping_dict):
+        """Check to make sure the input raster is an NLCD raster, ie: has the right kinds of pixel values"""
+        
+        unique_pixel_values_of_input_raster = np.unique(grid)
+        nlcd_codes.append(str(input_nodata_value))
+
+        if all(str(i) in nlcd_codes for i in unique_pixel_values_of_input_raster):
+            message = "The input raster has the correct NLCD codes for pixel values. Check"
+        else:
+            error_message = "The input raster's pixels aren't all legitimate NLCD codes. They must all be one of these values: " + str(nlcd_codes) + ". The raster you input had these values: " + str(unique_pixel_values_of_input_raster)
+            return error_message
+        output_array = copy(grid)
+        for key, value in raster_value_mapping_dict.items():
+            output_array[grid == key] = value
+        
+        return message, output_array
+        
+
+
     def check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):
         """Checks to make sure all land use codes are valid"""
         
@@ -566,7 +586,11 @@ class LULC_dataset:
         renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)    #renders selected raster layer
         layer.setRenderer(renderer)
         layer.triggerRepaint()
+        
+        
 
+                    
+                    
         
     
     

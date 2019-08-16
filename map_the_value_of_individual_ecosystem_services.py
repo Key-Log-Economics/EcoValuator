@@ -136,7 +136,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 
         log(f"ESV chosen: {input_esv_field}")
 
-        #Labeling output layer in legend        
+        #Labeling output layer in legend   
         if isinstance(parameters['OUTPUT_RASTER'], QgsProcessingOutputLayerDefinition):
             if input_esv_field != 'protection from extreme events':         #'protection from exteme events' is too long for legend in step 3 so it is shortened here
                 if input_esv_stat == 'min':
@@ -156,23 +156,8 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         result = {self.OUTPUT_RASTER: output_raster_destination}
-
-
-        # Check that the input raster has the right pixel size
-#        units_per_pixel_x = input_raster.rasterUnitsPerPixelX()
-#        units_per_pixel_y = input_raster.rasterUnitsPerPixelY()
-#        if units_per_pixel_x != 30 or units_per_pixel_y != 30:
-#            if round(units_per_pixel_x) == 30 and round(units_per_pixel_y) == 30:
-#                feedback.pushDebugInfo("Your input raster pixels weren't exactly 30x30 meters, but were close enough that the program will continue to run. Your input raster pixels were " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + ".")
-#            else:
-#                error_message = "The input raster should have 30x30 meter pixels. The one you input has " + str(units_per_pixel_x) + "x" + str(units_per_pixel_y) + "."
-#                feedback.reportError(error_message)
-#                log("")
-#                return {'error': error_message}
-#        else:
-#            log("The input raster's pixel size is correct: 30x30. Check")
-
         input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
+
 
         # Check to make sure the input ESV table has at least 4 columns
         esv_table_length = LULC_dataset.check_esv_table_length(input_esv_table)
@@ -191,8 +176,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         log(f'{output_format}')
 
 
-        #check to make sure all land use codes are valid
-###START HERE        
+        #check to make sure all land use codes are valid      
         nlcd_code_check = LULC_dataset.check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
         if type(nlcd_code_check[0]) is dict:
             raster_value_mapping_dict = nlcd_code_check[0]
@@ -204,47 +188,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                 log(f'{nlcd_code_check}')
             else:
                 log('not dict 2!')
-                log(f'{nlcd_code_check[0]}')
-                log(f'{nlcd_code_check[1]}')
-        
-#        raster_value_mapping_dict = {}
-#
-#
-#        input_esv_table_features = input_esv_table.getFeatures()
-#        nlcd_codes = ['11', '21', '22', '23', '24', '31', '41', '42', '43', '52', '71', '81', '82', '90', '95']
-#
-#        for input_esv_table_feature in input_esv_table_features:
-#            nlcd_code = str(input_esv_table_feature.attributes()[0])
-#            # Check to make sure this is a legit nlcd code. If it's not throw and error and abort the algorithm
-#            if nlcd_code not in nlcd_codes:
-#                error_message = "Found a value in the first column of the input ESV table that isn't a legitimate NLCD code: " + str(nlcd_code) + ". All the values in the first column of the input ESV table must be one of these: " + str(nlcd_codes)
-#                feedback.reportError(error_message)
-#                log("")
-#                return {'error': error_message}  
-#            try:
-#                selected_esv = input_esv_table_feature.attribute(input_esv_field.lower().replace(" ", "-").replace(",", "") + "_" + input_esv_stat)
-#            except KeyError:
-#                feedback.reportError("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
-#                feedback.pushDebugInfo(str(input_esv_table.fields().names()[4:]))
-#                log("")
-#                return result
-#            # If there is no ESV for tis particular NLCD-ES combo Then
-#            # the cell will be Null (i.e. None) and so we're dealing with
-#            # that below by setting the value to 255, which is the value
-#            # of the other cells that don't have values (at least for this
-#            # data)
-#
-#            if selected_esv == 'None':
-#                selected_esv = input_nodata_value
-#
-#            # If it's not null then we need to convert the total ESV for
-#            # the whole area covered by that land cover (which is in USD/hectare)
-#            # to the per pixel ESV (USD/pixel)
-#            else:
-#                num_pixels = int(input_esv_table_feature.attributes()[2])
-#                selected_esv = float(selected_esv) / num_pixels
-#            raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
-
+                log(f'{nlcd_code_check}')
 
 
         # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
@@ -253,21 +197,13 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         
         
         # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
-        unique_pixel_values_of_input_raster = np.unique(grid)
-        nlcd_codes.append(str(input_nodata_value))
-
-        if all(str(i) in nlcd_codes for i in unique_pixel_values_of_input_raster):
-            log("The input raster has the correct NLCD codes for pixel values. Check")
-        else:
-            error_message = "The input raster's pixels aren't all legitimate NLCD codes. They must all be one of these values: " + str(nlcd_codes) + ". The raster you input had these values: " + str(unique_pixel_values_of_input_raster)
-            feedback.reportError(error_message)
-            log("")
-            return {'error': error_message}
-        output_array = copy(grid)
-        for key, value in raster_value_mapping_dict.items():
-            if feedback.isCanceled():
-                return result
-            output_array[grid == key] = value
+        nlcd_raster_check = LULC_dataset.check_for_nlcd_raster(grid, nlcd_codes, input_nodata_value, raster_value_mapping_dict)
+        
+        if len(nlcd_raster_check) == 1:
+            log(f'{nlcd_raster_check}')
+        elif len(nlcd_raster_check) == 2:
+            log(f'{nlcd_raster_check[0]}')
+            output_array = nlcd_raster_check[1]
         log(self.tr("Values mapped. Check"))
         
         Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
@@ -301,7 +237,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 
         #Uses range_of_values to color output in QGIS by building raster shader object. Most ESVs have unique colors. 
         LULC_dataset.create_color_ramp_and_shade_output(layer, input_esv_field, *range_of_values)   # *range_of_values brings in tuple as list of arguments
-        
+                
         
         log(self.tr(f"Adding final raster to map."))
         #need to add result from gdal:rastercalculator to map (doesn't happen automatically)
