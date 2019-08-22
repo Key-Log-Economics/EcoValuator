@@ -76,6 +76,10 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     STATS = ['min', 'avg', 'max']
     OUTPUT_RASTER = 'OUTPUT_RASTER'
     OUTPUT_RASTER_FILENAME_DEFAULT = 'Output esv raster'
+    
+    INPUT_LULC_SOURCE = 'INPUT_LULC_SOURCE'
+    LULC_SOURCES = ['NLCD','NALCMS']    #Index 0 for NLCD, Index 1 for NALCMS
+
 
     def initAlgorithm(self, config):
         """
@@ -83,9 +87,16 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         """
         # Add a parameter for the clipped raster layer
         self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_LULC_SOURCE,
+                self.tr('Select land use/land cover data source'),
+                self.LULC_SOURCES
+            )
+        )
+        self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
-                self.tr('Input NLCD raster')
+                self.tr('Input clipped raster layer')
             )
         )
 
@@ -100,7 +111,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_ESV_FIELD,
-                self.tr('Ecosystem service of interest'),
+                self.tr('Choose ecosystem service of interest'),
                 self.INPUT_ESV_FIELD_OPTIONS
             )
         )
@@ -108,7 +119,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_ESV_STAT,
-                self.tr('Ecosystem Service Value Level'),
+                self.tr('Choose ecosystem Service Value Level'),
                 self.STATS
             )
         )
@@ -127,6 +138,9 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         """
 
         log = feedback.setProgressText
+        
+        input_lulc_source_index = self.parameterAsEnum(parameters, self.INPUT_LULC_SOURCE, context)
+        input_lulc_source = self.LULC_SOURCES[input_lulc_source_index]
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         input_nodata_value = 255
         input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
@@ -176,38 +190,74 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         log(f'{output_format}')
 
 
-        #check to make sure all land use codes are valid      
-        nlcd_code_check = LULC_dataset.check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
-        if type(nlcd_code_check[0]) is dict:
-            raster_value_mapping_dict = nlcd_code_check[0]
-            nlcd_codes = nlcd_code_check[1]
-            log('NLCD Codes are all valid. Check')
-        elif type(nlcd_code_check[0]) is str:
-            if len(nlcd_code_check) == 1:
-                log('not dict!')
-                log(f'{nlcd_code_check}')
-            else:
-                log('not dict 2!')
-                log(f'{nlcd_code_check}')
+        #check to make sure all land use codes are valid 
+                
+        #fork for NLCD land cover data
+        if input_lulc_source == 'NLCD':
+        
+#        I don't like the error handling here. Problem stems from LULC_dataset.check_nlcd_codes() function
+            nlcd_code_check = LULC_dataset.check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
+            if type(nlcd_code_check[0]) is dict:
+                raster_value_mapping_dict = nlcd_code_check[0]
+                nlcd_codes = nlcd_code_check[1]
+                log('NLCD Codes are all valid. Check')
+            elif type(nlcd_code_check[0]) is str:
+                if len(nlcd_code_check) == 1:
+                    log(f'{nlcd_code_check}')
+                else:
+                    log(f'{nlcd_code_check}')
 
+            # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
+            log(self.tr("Reading input NLCD raster into numpy array ..."))
+            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
+        
+        
+            # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+            nlcd_raster_check = LULC_dataset.check_for_nlcd_raster(grid, nlcd_codes, input_nodata_value, raster_value_mapping_dict)
+        
+            if len(nlcd_raster_check) == 1:
+                log(f'{nlcd_raster_check}')
+            elif len(nlcd_raster_check) == 2:
+                log(f'{nlcd_raster_check[0]}')
+                output_array = nlcd_raster_check[1]
+            log(self.tr("Values mapped. Check"))
+        
+            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
+            
+            
+        #fork for NALCMS land cover data    
+        elif input_lulc_source == 'NALCMS':
 
-        # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
-        log(self.tr("Reading input raster into numpy array ..."))
-        grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
+            nalcms_code_check = LULC_dataset.check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
+            if type(nalcms_code_check[0]) is dict:
+                raster_value_mapping_dict = nalcms_code_check[0]
+                nalcms_codes = nalcms_code_check[1]
+                log('NALCMS Codes are all valid. Check')
+            elif type(nalcms_code_check[0]) is str:
+                if len(nalcms_code_check) == 1:
+                    log(f'{nalcms_code_check}')
+                else:
+                    log(f'{nalcms_code_check}')
+            
+            
+            # Create a new raster whose pixel values are, instead of being NALCMS code values, the per-pixel ecosystem service values corresponding to the NALCMS codes
+            log(self.tr("Reading input NALCMS raster into numpy array ..."))
+            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
+            
+            # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+            nalcms_raster_check = LULC_dataset.check_for_nalcms_raster(grid, nalcms_codes, input_nodata_value, raster_value_mapping_dict)
+            
+            log(f'NALCMS_RASTER_CHECK: {nalcms_raster_check}')
+            
+#            if len(nalcms_raster_check) == 1:
+#                log(f'{nalcms_raster_check}')
+#            elif len(nalcms_raster_check) == 2:
+#                log(f'{nalcms_raster_check[0]}')
+#                output_array = nalcms_raster_check[1]
+#            log(self.tr("Values mapped. Check"))
         
-        
-        # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
-        nlcd_raster_check = LULC_dataset.check_for_nlcd_raster(grid, nlcd_codes, input_nodata_value, raster_value_mapping_dict)
-        
-        if len(nlcd_raster_check) == 1:
-            log(f'{nlcd_raster_check}')
-        elif len(nlcd_raster_check) == 2:
-            log(f'{nlcd_raster_check[0]}')
-            output_array = nlcd_raster_check[1]
-        log(self.tr("Values mapped. Check"))
-        
-        Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
-        
+            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
+            
         
         # Reclassifies 255 value (no data value) to 0 using GDAL: Raster Calculator
         log(self.tr("Reclassifying missing values with Raster Calculator"))
@@ -230,10 +280,8 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         provider = layer.dataProvider()
         extent = layer.extent()
         
-        
         #Using RasterBandStats to find range of values in raster layer
         range_of_values = LULC_dataset.compute_range_of_values(layer, provider, extent)
-
 
         #Uses range_of_values to color output in QGIS by building raster shader object. Most ESVs have unique colors. 
         LULC_dataset.create_color_ramp_and_shade_output(layer, input_esv_field, *range_of_values)   # *range_of_values brings in tuple as list of arguments

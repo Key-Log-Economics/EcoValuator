@@ -99,7 +99,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
-                self.tr('Input NLCD raster')
+                self.tr('Input land cover raster')
             )
         )
         # Input vector to be mask for raster
@@ -121,7 +121,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_ESV_TABLE,
-                self.tr('Output ESV Table (Leave Blank)')
+                self.tr('Output ESV Table')
             )
         )
 
@@ -139,14 +139,12 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
             feedback.reportError(error_message)
             return {'error': error_message}
 
-        # Set the LULC data source
+        # Set the LULC data source and input vector layer
         input_lulc_source_index = self.parameterAsEnum(parameters, self.INPUT_LULC_SOURCE, context)
         input_lulc_source = self.LULC_SOURCES[input_lulc_source_index]
-        feedback.pushDebugInfo(f'Processing for {input_lulc_source} data')
- 
         input_vector = self.parameterAsVectorLayer(parameters, self.MASK_LAYER, context)
         
-        # Create LULC_dataset object from input raster
+        feedback.pushDebugInfo(f'Processing for {input_lulc_source} data')
 
         # Append input raster and input vector filenames to end of output clipped raster filename
         if isinstance(parameters['CLIPPED_RASTER'], QgsProcessingOutputLayerDefinition):
@@ -167,7 +165,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         log("Summarizing raster...")
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
 
-        ##----Make instance of LULC dataset from clipped layer here--##
+        #Make instance of LULC dataset from clipped layer here
         print('making LULC dataset type')
         LULC_clipped_raster = LULC_dataset(input_lulc_source, clipped_raster, __esv_data_location__ )
 
@@ -180,6 +178,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
             return {'error': error_message}
 
         print('Building output table')
+        
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, LULC_clipped_raster.get_output_QgsFields())
 
         result = {self.CLIPPED_RASTER: clipped_raster_destination,
