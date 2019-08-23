@@ -348,6 +348,7 @@ class LULC_dataset:
     def check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):  #TODO: debug this function
         """Checks to make sure all NALCMS land use codes are valid"""
         
+        
         raster_value_mapping_dict = {}
 
         input_esv_table_features = input_esv_table.getFeatures()

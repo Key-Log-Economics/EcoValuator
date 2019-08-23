@@ -198,6 +198,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
 #        I don't like the error handling here. Problem stems from LULC_dataset.check_nlcd_codes() function
             nlcd_code_check = LULC_dataset.check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
             if type(nlcd_code_check[0]) is dict:
+                log(f'{nlcd_code_check[0]}')
                 raster_value_mapping_dict = nlcd_code_check[0]
                 nlcd_codes = nlcd_code_check[1]
                 log('NLCD Codes are all valid. Check')
@@ -223,12 +224,22 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             log(self.tr("Values mapped. Check"))
         
             Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
+
+            log(self.tr("Reclassifying missing values with Raster Calculator"))
+        
+            parameters = {'INPUT_A' : output_raster_destination,
+                          'BAND_A' : 1,
+                          'FORMULA' : '(A != 255) * A',
+                          'OUTPUT' : output_raster_destination}
+        
+            processing.run('gdal:rastercalculator', parameters)            
             
             
         #fork for NALCMS land cover data    
         elif input_lulc_source == 'NALCMS':
 
             nalcms_code_check = LULC_dataset.check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
+                            
             if type(nalcms_code_check[0]) is dict:
                 raster_value_mapping_dict = nalcms_code_check[0]
                 nalcms_codes = nalcms_code_check[1]
@@ -238,36 +249,36 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                     log(f'{nalcms_code_check}')
                 else:
                     log(f'{nalcms_code_check}')
+
+###START HERE            
+#            # Create a new raster whose pixel values are, instead of being NALCMS code values, the per-pixel ecosystem service values corresponding to the NALCMS codes
+#            log(self.tr("Reading input NALCMS raster into numpy array ..."))
+#            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
+#            
+#            # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
+#            nalcms_raster_check = LULC_dataset.check_for_nalcms_raster(grid, nalcms_codes, input_nodata_value, raster_value_mapping_dict)
+#            
+#            log(f'NALCMS_RASTER_CHECK: {nalcms_raster_check}')
+#            
+##            if len(nalcms_raster_check) == 1:
+##                log(f'{nalcms_raster_check}')
+##            elif len(nalcms_raster_check) == 2:
+##                log(f'{nalcms_raster_check[0]}')
+##                output_array = nalcms_raster_check[1]
+##            log(self.tr("Values mapped. Check"))
+#        
+#            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
             
-            
-            # Create a new raster whose pixel values are, instead of being NALCMS code values, the per-pixel ecosystem service values corresponding to the NALCMS codes
-            log(self.tr("Reading input NALCMS raster into numpy array ..."))
-            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
-            
-            # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
-            nalcms_raster_check = LULC_dataset.check_for_nalcms_raster(grid, nalcms_codes, input_nodata_value, raster_value_mapping_dict)
-            
-            log(f'NALCMS_RASTER_CHECK: {nalcms_raster_check}')
-            
-#            if len(nalcms_raster_check) == 1:
-#                log(f'{nalcms_raster_check}')
-#            elif len(nalcms_raster_check) == 2:
-#                log(f'{nalcms_raster_check[0]}')
-#                output_array = nalcms_raster_check[1]
-#            log(self.tr("Values mapped. Check"))
         
-            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
-            
+            # Reclassifies 255 value (no data value) to 0 using GDAL: Raster Calculator
+            log(self.tr("Reclassifying missing values with Raster Calculator"))
         
-        # Reclassifies 255 value (no data value) to 0 using GDAL: Raster Calculator
-        log(self.tr("Reclassifying missing values with Raster Calculator"))
+            parameters = {'INPUT_A' : output_raster_destination,
+                          'BAND_A' : 1,
+                          'FORMULA' : '(A != 255) * A',
+                          'OUTPUT' : output_raster_destination}
         
-        parameters = {'INPUT_A' : output_raster_destination,
-                      'BAND_A' : 1,
-                      'FORMULA' : '(A != 255) * A',
-                      'OUTPUT' : output_raster_destination}
-        
-        processing.run('gdal:rastercalculator', parameters)
+            processing.run('gdal:rastercalculator', parameters)
         
         
         #must add raster to iface so that is becomes active layer, then symbolize it in next step
