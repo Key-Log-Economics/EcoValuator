@@ -219,6 +219,7 @@ class LULC_dataset:
             output_table_QgsFields.append(QgsField(field, QVariant.String, len=50))
         return(output_table_QgsFields)
 
+
     def create_output_table(self, sink):
         """ Reshape and write data to feature sink"""
 
@@ -282,11 +283,28 @@ class LULC_dataset:
             output_array[grid == key] = value
         
         return message, output_array
+
+
+    def check_for_nalcms_raster(grid, nalcms_codes, input_nodata_value, raster_value_mapping_dict):
+        """Check to make sure the input raster is an NALCMS raster, ie: has the right kind of pixel values"""
+        
+        unique_pixel_values_of_input_raster = np.unique(grid)
+        nalcms_codes.append(str(input_nodata_value))
+
+        if all(str(i) in nalcms_codes for i in unique_pixel_values_of_input_raster):
+            message = "The input raster has the correct NALCMS codes for pixel values. Check"
+        else:
+            error_message = "The input raster's pixels aren't all legitimate NALCMS codes. They must all be one of these values: " + str(nalcms_codes) + ". The raster you input had these values: " + str(unique_pixel_values_of_input_raster)
+            return error_message
+        output_array = copy(grid)
+        for key, value in raster_value_mapping_dict.items():
+            output_array[grid == key] = value
+        
+        return message, output_array
         
 
-
     def check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):
-        """Checks to make sure all land use codes are valid"""
+        """Checks to make sure all NLCD land use codes are valid"""
         
         raster_value_mapping_dict = {}
 
@@ -307,7 +325,52 @@ class LULC_dataset:
                 error_data = ("Input table fields: ", str(input_esv_table.fields().names()[4:]))
                 return error_message, error_data
             
-#            # If there is no ESV for tis particular NLCD-ES combo Then
+
+            # If there is no ESV for this particular NLCD-ESV combo Then
+            # the cell will be Null (i.e. None) and so we're dealing with
+            # that below by setting the value to 255, which is the value
+            # of the other cells that don't have values (at least for this
+            # data)
+
+            if selected_esv == 'None':
+                selected_esv = input_nodata_value
+
+            # If it's not null then we need to convert the total ESV for
+            # the whole area covered by that land cover (which is in USD/hectare)
+            # to the per pixel ESV (USD/pixel)
+            else:
+                num_pixels = int(input_esv_table_feature.attributes()[2])
+                selected_esv = float(selected_esv) / num_pixels
+            raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
+            
+        return raster_value_mapping_dict, nlcd_codes
+
+
+    def check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):  
+        """Checks to make sure all NALCMS land use codes are valid"""
+        
+        
+        raster_value_mapping_dict = {}
+
+        input_esv_table_features = input_esv_table.getFeatures()
+        ######WHAT IS UP WITH THIS NO DATA VALUE HERE?
+        nalcms_codes = ['1', '2', '3', '4' , '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '127']
+
+        for input_esv_table_feature in input_esv_table_features:  
+            nalcms_code = str(input_esv_table_feature.attributes()[0])
+#            # Check to make sure this is a legit nalcms code. If it's not throw and error and abort the algorithm
+            if nalcms_code not in nalcms_codes:
+                error_message = "Found a value in the first column of the input ESV table that isn't a legitimate NALCMS code: " + str(nalcms_code) + ". All the values in the first column of the input ESV table must be one of these: " + str(nalcms_codes)
+                return error_message  
+            try:
+                selected_esv = input_esv_table_feature.attribute(input_esv_field.lower().replace(" ", "-").replace(",", "") + "_" + input_esv_stat)
+            except KeyError:
+                error_message = ("The Input ESV field you specified (" + input_esv_field + "_" + input_esv_stat + ") doesn't exist in this dataset. Please enter one of the fields that does exist: ")
+#                error_message = (f'The input ESV field you specified: {input_esv_field}_{input_esv_stat} does not exist in this dataset. Please enter one of the fields that does exist: \n Input table fields: {str(input_esv_table.fields().names()[4:]}')
+                error_data = ("Input table fields: ", str(input_esv_table.fields().names()[4:]))
+                return error_message, error_data
+            
+#            # If there is no ESV for this particular NLCD-ESV combo Then
 #            # the cell will be Null (i.e. None) and so we're dealing with
 #            # that below by setting the value to 255, which is the value
 #            # of the other cells that don't have values (at least for this
@@ -322,9 +385,10 @@ class LULC_dataset:
             else:
                 num_pixels = int(input_esv_table_feature.attributes()[2])
                 selected_esv = float(selected_esv) / num_pixels
-            raster_value_mapping_dict.update({int(nlcd_code): selected_esv})
+                
+            raster_value_mapping_dict.update({int(nalcms_code): selected_esv})
             
-        return raster_value_mapping_dict, nlcd_codes
+        return raster_value_mapping_dict, nalcms_codes
 
         
     def check_esv_table_length(input_esv_table):
@@ -364,7 +428,6 @@ class LULC_dataset:
         """Takes information from active raster layer and uses that to build range of values
         for that layer. Then breaks values into 5 evenly spaced quintiles (minimum and maximum
         value for each quintile) and returns those as a tuple."""
-        
         
         raster_stats = provider.bandStatistics(1, QgsRasterBandStats.All) 
         min_val = raster_stats.minimumValue            #minimum pixel value in layer
