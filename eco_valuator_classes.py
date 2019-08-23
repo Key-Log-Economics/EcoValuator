@@ -325,18 +325,19 @@ class LULC_dataset:
                 error_data = ("Input table fields: ", str(input_esv_table.fields().names()[4:]))
                 return error_message, error_data
             
-#            # If there is no ESV for tis particular NLCD-ES combo Then
-#            # the cell will be Null (i.e. None) and so we're dealing with
-#            # that below by setting the value to 255, which is the value
-#            # of the other cells that don't have values (at least for this
-#            # data)
+
+            # If there is no ESV for this particular NLCD-ESV combo Then
+            # the cell will be Null (i.e. None) and so we're dealing with
+            # that below by setting the value to 255, which is the value
+            # of the other cells that don't have values (at least for this
+            # data)
 
             if selected_esv == 'None':
                 selected_esv = input_nodata_value
 
-#            # If it's not null then we need to convert the total ESV for
-#            # the whole area covered by that land cover (which is in USD/hectare)
-#            # to the per pixel ESV (USD/pixel)
+            # If it's not null then we need to convert the total ESV for
+            # the whole area covered by that land cover (which is in USD/hectare)
+            # to the per pixel ESV (USD/pixel)
             else:
                 num_pixels = int(input_esv_table_feature.attributes()[2])
                 selected_esv = float(selected_esv) / num_pixels
@@ -345,14 +346,15 @@ class LULC_dataset:
         return raster_value_mapping_dict, nlcd_codes
 
 
-    def check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):  #TODO: debug this function
+    def check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value):  
         """Checks to make sure all NALCMS land use codes are valid"""
         
         
         raster_value_mapping_dict = {}
 
         input_esv_table_features = input_esv_table.getFeatures()
-        nalcms_codes = ['1', '2', '3', '4' , '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19']
+        ######WHAT IS UP WITH THIS NO DATA VALUE HERE?
+        nalcms_codes = ['1', '2', '3', '4' , '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '127']
 
         for input_esv_table_feature in input_esv_table_features:  
             nalcms_code = str(input_esv_table_feature.attributes()[0])
@@ -368,7 +370,7 @@ class LULC_dataset:
                 error_data = ("Input table fields: ", str(input_esv_table.fields().names()[4:]))
                 return error_message, error_data
             
-#            # If there is no ESV for tis particular NLCD-ES combo Then
+#            # If there is no ESV for this particular NLCD-ESV combo Then
 #            # the cell will be Null (i.e. None) and so we're dealing with
 #            # that below by setting the value to 255, which is the value
 #            # of the other cells that don't have values (at least for this
@@ -383,6 +385,7 @@ class LULC_dataset:
             else:
                 num_pixels = int(input_esv_table_feature.attributes()[2])
                 selected_esv = float(selected_esv) / num_pixels
+                
             raster_value_mapping_dict.update({int(nalcms_code): selected_esv})
             
         return raster_value_mapping_dict, nalcms_codes
