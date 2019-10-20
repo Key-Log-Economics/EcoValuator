@@ -239,19 +239,22 @@ class LULC_dataset:
         ESV = self.ESV_to_np_array()
         output_table_QgsFields = self.get_output_QgsFields()
 
-
         LULC_descriptions = {i:k for i, k in ESV[['LULC Value', 'LULC Description']]}
+
         # Reshape the data with a row for each LULC type
         for row in self.ras_summary_dict.keys():
             # Add LULC code and descriptions to feature
+            irow = int(row) #row LULC value as an int
+            srow = str(irow) # row LULC value as a string
             new_feature = QgsFeature(output_table_QgsFields)
-            new_feature['LULC_code'] = int(row)
-            new_feature['LULC_description'] = str(LULC_descriptions.get(str(row))) # Returns None if the LULC code does not exist in the ESV CSV file
+            new_feature['LULC_code'] = irow
+            new_feature['LULC_description'] = str(LULC_descriptions.get(srow)) # Returns None if the LULC code does not exist in the ESV CSV file
+
 
             if(new_feature['LULC_description']):
                 # Check if the current LULC value in the raster exists in the ESV dataset
                 #  If it exists, add the total pixel count and area for each value
-                raster_summary_for_LULC_val = self.ras_summary_array[self.ras_summary_array['raster_values'] == int(row)]
+                raster_summary_for_LULC_val = self.ras_summary_array[self.ras_summary_array['raster_values'] == irow]
                 pixel_count = raster_summary_for_LULC_val['value_pixel_count']
                 area_hectares = raster_summary_for_LULC_val['value_area']
                 new_feature['pixel_count'] = str(pixel_count[0])
@@ -259,7 +262,7 @@ class LULC_dataset:
 
             for colname, colvalue in output_data.items():
                 # Add service values to the feature
-                service_value = colvalue.get(str(row))
+                service_value = colvalue.get(srow)
                 new_feature[colname] = str(service_value)
 
             sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
