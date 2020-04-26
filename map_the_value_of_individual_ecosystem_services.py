@@ -60,12 +60,7 @@ from qgis.core import (QgsProcessing,
                       )
 
 from .appinter import (Raster, App)
-from .eco_valuator_classes import LULC_dataset
-
-
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-__esv_data_location__ = os.path.join(__location__, "esv_data")
-
+from .eco_valuator_classes import LULC_dataset, ESV_dataset
 
 
 class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
@@ -73,32 +68,18 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
-    INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['Aesthetic',
-                               'Air Quality',
-                               'Biodiversity',
-                               'Climate Regulation',
-                               'Cultural, Other',
-                               'Erosion Control',
-                               'Food/Nutrition',
-                               'Medicinal',
-                               'Pollination',
-                               'Protection from extreme events',
-                               'Raw Materials',
-                               'Recreation',
-                               'Renewable Energy',
-                               'Soil Formation',
-                               'Waste Assimilation',
-                               'Water Supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
-    STATS = ['Minimum', 'Average', 'Maximum']
+    STATS_MAP = {'Minimum':'Min', 'Average':'Avg', 'Maximum':'Max'}
+    STATS = list(STATS_MAP)
     OUTPUT_RASTER = 'OUTPUT_RASTER'
     OUTPUT_RASTER_FILENAME_DEFAULT = 'Output esv raster'
     
     INPUT_LULC_SOURCE = 'INPUT_LULC_SOURCE'
-    LULC_SOURCES = ['NLCD','NALCMS']    #Index 0 for NLCD, Index 1 for NALCMS
 
+    with ESV_dataset() as esv:
+        LULC_SOURCES = esv.get_lulc_sources()
+        INPUT_ESV_FIELD_OPTIONS = esv.get_ecosystem_service_names()
 
     def initAlgorithm(self, config):
         """
@@ -157,7 +138,8 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
         input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
-        input_esv_stat = self.STATS[input_esv_stat_index]
+        input_esv_stat_full_name = self.STATS[input_esv_stat_index]
+        input_esv_stat = self.STATS_MAP[input_esv_stat_full_name]
 
         log(f"ESV chosen: {input_esv_field}")
 
@@ -179,7 +161,9 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                     setattr(parameters['OUTPUT_RASTER'], 'destinationName', f'Average Value - extreme event protection')
 
 
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+
         result = {self.OUTPUT_RASTER: output_raster_destination}
 
         """Check output file format to make sure it is a geotiff"""
@@ -195,8 +179,8 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             log(message)
 
         #Make instance of LULC dataset from clipped layer here
-        LULC_raster = LULC_dataset(input_lulc_source, input_raster, __esv_data_location__ )
-    
+        LULC_raster = LULC_dataset(input_lulc_source, input_raster)
+        
         # Check to make sure all land use codes are valid 
         valid = LULC_raster.is_valid()
         if isinstance(valid, str):
@@ -205,14 +189,34 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             feedback.reportError(error_message)
             return {'error': error_message}
 
-        # Convert LULC raster to per-pixel valuations based on input params
-        #  this function will also compute quintile ranges for symbolizing output raster
-        LULC_raster.convert_LULC_pixels_to_ESV_valuation(input_esv_field,
-                                                                          input_esv_stat,
-                                                                          output_raster_destination)
-        
-        min_val = LULC_raster.output_min_val 
-        max_val = LULC_raster.output_max_val 
+        # Get reclassify table for selected parameters
+        ESV_data = ESV_dataset()
+        reclass_table = ESV_data.make_reclassify_table(LULC_raster.cell_size(),
+                                                       input_lulc_source,
+                                                       input_esv_stat,
+                                                       input_esv_field)
+
+        # Perform reclassification
+        reclassify_params = {'INPUT_RASTER':input_raster,
+        'RASTER_BAND':1,
+        'TABLE':reclass_table,
+        'NO_DATA':-9999,
+        'RANGE_BOUNDARIES':0,
+        'NODATA_FOR_MISSING':True,
+        'DATA_TYPE':6,
+        'OUTPUT':output_raster_destination}
+
+        processing.run("native:reclassifybytable", reclassify_params)
+
+        # Get min and max values for quintile calculations
+
+        output_raster = self.parameterAsRasterLayer(parameters, self.OUTPUT_RASTER, context)
+
+        provider = output_raster.dataProvider()
+        stats = provider.bandStatistics(1, QgsRasterBandStats.All)
+        output_min_val = stats.minimumValue
+        output_max_val = stats.maximumValue
+
         #must add raster to iface so that is becomes active layer, then symbolize it in next step
         iface.addRasterLayer(output_raster_destination)
         log("Symbolizing Output")
@@ -222,8 +226,8 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         provider = layer.dataProvider()
         extent = layer.extent()
 
-        # Combute quintile ranges for symbolizing output raster
-        value_range = list(range(LULC_raster.output_min_val, LULC_raster.output_max_val+1)) 
+        # Compute quintile ranges for symbolizing output raster
+        value_range = list(range(int(output_min_val), int(output_max_val)+1))
         if value_range[0] == 0:
             # Deletes 0 value from value range so as not to skew shading in results
             value_range.pop(0)
@@ -232,7 +236,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         #defining min and max values for each quintile. 
         #Also, values are rounded to 2 decimal places
         first_quintile_max = round(np.percentile(value_range, 20), 2)
-        first_quintile_min = round(min_val, 2)
+        first_quintile_min = round(output_min_val, 2)
         second_quintile_max = round(np.percentile(value_range, 40), 2)
         second_quintile_min = round((first_quintile_max + .01), 2)
         third_quintile_max = round(np.percentile(value_range, 60), 2)
@@ -262,28 +266,9 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                         'medium_blue':(QColor(255, 255, 255, .5), QColor(204,229,255), QColor(153,204,255), QColor(51,153,205), QColor(0,102,204), QColor(0,51,102))
                     }
 
-
-        value_ramp_dict = {
-                            'aesthetic':'green',
-                            'air quality':'light_blue',
-                            'biodiversity':'green',
-                            'climate regulation':'orange',
-                            'cultural, other':'orange',
-                            'erosion control':'brown',
-                            'food/nutrition':'pink',
-                            'medicinal':'pink',
-                            'pollination':'yellow',
-                            'protection from extreme events':'gray_black',
-                            'raw materials':'purple',
-                            'recreation':'red',
-                            'renewable energy':'red',
-                            'soil formation':'brown',
-                            'waste assimilation':'blue_purple',
-                            'water supply':'medium_blue'
-                        }
-
-        ramp_name = value_ramp_dict[input_esv_field.lower()]
-        colors = color_ramps[ramp_name]
+        # map the ecosystem service types to the color ramp options
+        color_ramp_map = {k:v for k,v in zip(self.INPUT_ESV_FIELD_OPTIONS,color_ramps.values())}
+        colors = color_ramp_map[input_esv_field]
 
         raster_shader = QgsColorRampShader()
         raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
