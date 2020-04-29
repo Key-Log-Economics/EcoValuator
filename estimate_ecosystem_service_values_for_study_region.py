@@ -182,6 +182,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         # Make output table
         output_table_QgsFields = QgsFields()
         for field in data_for_table['column_names']:
+            print(field)
             output_table_QgsFields.append(QgsField(field, QVariant.String, len=50))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, output_table_QgsFields)

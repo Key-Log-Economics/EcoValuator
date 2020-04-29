@@ -21,12 +21,18 @@ service_names.csv
 run this file within the directory of the csv files to be loaded into a database file
 THIS SCRIPT WILL OVERWRITE EXISTING DATABASE FILE IN THE DIRECTORY
 """
+import os
+import sqlite3
+import csv
 
-data_dir = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+DATA_DIR = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-db_file = os.path.join(data_dir, 'ESV_data.sqlite')
+DB_FILE = os.path.join(DATA_DIR, 'ESV_data.sqlite')
 
-sql_info = [{'table_name':'esv_estimates',
+if os.path.exists(DB_FILE):
+    os.remove(DB_FILE)
+
+SQL_INFO = [{'table_name':'esv_estimates',
              'columns': [('lulc_source','TEXT','NOT NULL'),
                         ('lulc_value','INTEGER','NOT NULL'), 
                         ('service_id','INTEGER','NOT NULL'),
@@ -45,8 +51,9 @@ sql_info = [{'table_name':'esv_estimates',
             }]
 
 
-for table in sql_info:
+for table in SQL_INFO:
     table_name = table['table_name']
+    print(f'processing table {table_name} ')
     columns = table['columns']
     column_names = [c[0] for c in columns]
     columns_sql = [' '.join(col) for col in columns]
@@ -57,14 +64,14 @@ for table in sql_info:
     create_sql = f"""CREATE TABLE IF NOT EXISTS {table_name}({','.join(columns_sql)})"""
     insert_sql = f"""INSERT INTO {table_name}({','.join(column_names)}) VALUES ({qs})"""
 
-    csv_file = os.path.join(data_dir, table_name + '.csv')
+    csv_file = os.path.join(DATA_DIR, table_name + '.csv')
     with open(csv_file, 'r') as f:
         reader = csv.reader(f)
         rows = list(reader)
         columns = rows[0]
         data = rows[1:]
 
-    with sqlite3.connect(db_file) as conn:
+    with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute(create_sql)
         cursor.executemany(insert_sql, data)

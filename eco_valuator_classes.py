@@ -1,3 +1,5 @@
+
+
 from osgeo import gdal, gdalnumeric, gdal_array
 import numpy as np
 from numpy import copy
@@ -227,7 +229,7 @@ class ESV_dataset:
         result = self.query("""SELECT name FROM sqlite_master WHERE type='table';""")
         return(result)
 
-    def create_temp_table_raster_area_summary(self,data):
+    def create_temp_table_raster_area_summary(self, data):
         """Takes an input of data that summarizes LULC raster values in the AOI and converts into 
         a temporary table in the sqlite database. This allows the values to be summarized and used
         for later queries.
@@ -239,53 +241,16 @@ class ESV_dataset:
                       Pixel Count is the integer count of pixels in the LULC type
                       Area is the total area of that type in the AOI (hectares)
         """
+        # Make sure incoming data is the correct type (i.e. not Numpy data types)
+        cleaned_data = [(d[0].item(),d[1].item(),d[2].item()) for d in data]
+
         self.execute("""DROP TABLE IF EXISTS raster_area_summary;""")
         self.execute("""CREATE TEMPORARY TABLE raster_area_summary(
             lulc_value INTEGER NOT NULL,
             pixel_count INTEGER NOT NULL,
             area REAL NOT NULL
         ); """)
-        self.executemany("""INSERT INTO raster_area_summary(lulc_value,pixel_count,area) VALUES (?,?,?);""", data)
-
-    def make_pivot_col_queries(self):
-        """Creates a select statement string for adding a column in a pivot table
-        for an ecosystem service type
-        
-        Returns a string of comma separated SQL select statements for creating a pivot column
-        """
-        result = self.query("""SELECT service_id, service_name FROM service_names""")
-        service_id_map = {k:v for k,v in result}
-
-        statement_base = "SUM(CASE WHEN service_id = {0} THEN estimate_{1} END) * area as {2}_{1}"
-        #Clean function replaces spaces, slashes, and commas with an underscore
-        clean = lambda x: re.sub("""\/|\s|,""",  '_', x.lower())
-
-        statements = []
-        for i in range(1,17):
-            for summary_type in ['min','avg','max']:
-                col_name_prefix = clean(service_id_map[i])
-                statements.append(statement_base.format(i,summary_type,col_name_prefix))
-        statements_str = ','.join(statements)
-        return(statements_str)
-
-    def create_area_summmay_pivot_view(self, source_name):
-        """Creates a temporary pivot table summarizing the valuation of each land use type in the AOI
-        with a column for each ecosystem service type. This pivot table is used to create the output table 
-        for step 1.
-        """
-        pivot_col_queries = self.make_pivot_col_queries()
-        pivot_query = f"""
-        CREATE TEMPORARY TABLE esv_val_pivot AS
-        SELECT esv_estimates.lulc_value,
-        raster_area_summary.area,
-        {pivot_col_queries}
-        FROM esv_estimates JOIN raster_area_summary ON raster_area_summary.lulc_value = esv_estimates.lulc_value
-        WHERE esv_estimates.lulc_source = (?)
-        GROUP BY esv_estimates.lulc_value
-        ORDER BY esv_estimates.lulc_value ASC;"""
-
-        self.execute("""DROP TABLE IF EXISTS esv_val_pivot""")
-        self.execute(pivot_query, (source_name,))
+        self.executemany("""INSERT INTO raster_area_summary(lulc_value,pixel_count,area) VALUES (?,?,?);""", cleaned_data)
 
     def get_LULC_evaluation_data(self, data, source_name):
         """ Final output for step 1. Exports data and column names used to build the
@@ -298,10 +263,27 @@ class ESV_dataset:
             dictionary of column names and data to populate the output table
         """
         self.create_temp_table_raster_area_summary(data)
-        self.create_area_summmay_pivot_view(source_name)
+        #self.create_area_summmay_pivot_view(source_name)
 
-        result = self.query("""SELECT * FROM esv_val_pivot""")
+        #result = self.query("""SELECT * FROM esv_val_pivot""")
+
+        query = """ SELECT esv_estimates.lulc_value AS LULC_code,
+                           lulc_legend.description LULC_Description,
+                           service_names.service_name AS Ecosystem_Service_Name,
+                           ROUND(estimate_min * area) AS Minimum_Value_Estimate,
+                           ROUND(estimate_max * area) AS Maximum_Value_Estimate,
+                           ROUND(estimate_avg * area) AS Average_Value_Estimate
+                    FROM esv_estimates JOIN raster_area_summary ON esv_estimates.lulc_value = raster_area_summary.lulc_value
+                          JOIN service_names ON esv_estimates.service_id = service_names.service_id
+                          JOIN (SELECT * FROM lulc_legend WHERE source = ?) AS lulc_legend ON esv_estimates.lulc_value = lulc_legend.value
+                    WHERE esv_estimates.lulc_source = ?"""
+
+        result = self.query(query, (source_name,source_name))
+
+        for r in result:
+            print(r)
         column_names = [d[0] for d in self.cursor.description]
+        print(column_names)
         return({'data':result,
                 'column_names':column_names})
 
@@ -357,5 +339,3 @@ class ESV_dataset:
         services = [r[0] for r in result]
         return(services)
     
-
-
