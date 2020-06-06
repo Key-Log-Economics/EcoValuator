@@ -9,6 +9,8 @@ import processing
 import re
 import datetime
 import sqlite3
+import csv
+import tempfile
 
 from qgis.core import (QgsUnitTypes,  
                        QgsFields,
@@ -30,7 +32,19 @@ class LULC_dataset:
     def __init__(self, source_name, raster):
         self.source_name = source_name
         self.raster = raster
-        self.ras_array = self.get_raster_as_array()
+        self.raster_file_path = self.get_input_raster_path()
+        self.raster_summary = self.summarize_raster_values()
+
+    def get_input_raster_path(self):
+        """Returns the file path of the input raster removing 'file://' from the front"""
+
+        raster_source_path = self.raster.source()
+        file_prepend = 'file://'
+        if raster_source_path.find(file_prepend)==0:
+            # Strip out 'file://' from begining of file path
+            #  to pass to gdal
+            raster_source_path = raster_source_path[len(file_prepend):]
+        return(raster_source_path)
 
     def is_valid(self):
         """Check that the raster is valid for the selected source type
@@ -40,39 +54,13 @@ class LULC_dataset:
             expected_values = esv.get_pixel_options(self.source_name)
 
         # Find any unexpected raster values
-        raster_vals = np.unique(self.ras_array)
+        raster_vals = [r[0] for r in self.raster_summary]
         difference = set(raster_vals).difference(expected_values)
         if len(difference) > 0:
             error_message = f'The following raster values are invalid for the selected LULC source ({self.source_name}): {difference}. Please check that you have selected the correct data source.'
             return(error_message)
         else:
             return(True)
-
-    def get_raster_as_array(self):
-        """Returns the raster values as an array 
-        by creating a GDAL Dataset object from the input LULC raster"""
-
-        raster_source_path = self.raster.source()
-        file_prepend = 'file://'
-        if raster_source_path.find(file_prepend)==0:
-            # Strip out 'file://' from begining of file path
-            #  to pass to gdal
-            raster_source_path = raster_source_path[len(file_prepend):]
-
-        LULC_ds = gdal.Open(raster_source_path)
-        LULC_ds_band = LULC_ds.GetRasterBand(1)
-
-        nodata_val = LULC_ds_band.GetNoDataValue()
-        raster_as_array = LULC_ds_band.ReadAsArray()
-
-        if nodata_val is not None:
-            # If the raster has a no_data value, filter that value
-            #  from the array
-            raster_as_array = raster_as_array[raster_as_array != nodata_val]
-        
-        # Remove 0 values
-        raster_as_array = raster_as_array[raster_as_array != 0]
-        return(raster_as_array)
 
     def cell_size(self):
         """Returns the size of the raster cell in hectares"""
@@ -93,96 +81,29 @@ class LULC_dataset:
     def summarize_raster_values(self):
         """Returns an array summarizing the raster values. Pixel counts are converted to area (hectares)"""
 
-        #Check for NaN in the array        
-        if not isinstance(self.ras_array.dtype.type, np.float):
-            #If dtype is object, convert to float and filter Nan
-            test = self.ras_array.astype(float)
-            test = test[~np.isnan(test)]
-        else:
-            test = self.ras_array[~np.isnan(self.ras_array)]
-        
-        raster_values, value_pixel_count = np.unique(test, return_counts=True)
-        value_area = value_pixel_count * self.cell_size()
 
-        col_defs = np.dtype({'names':('raster_values',
-                                    'value_pixel_count',
-                                    'value_area'),
-                            'formats':(raster_values.dtype,
-                                    value_pixel_count.dtype,
-                                    value_area.dtype)
-                            }
-                           )
-        data_output = list(zip(raster_values,
-                           value_pixel_count,
-                           value_area)
-                       )
-        return(data_output)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            csv_name = 'TEMP_SUMMARY.csv'
+            summary_file = os.path.join(tmpdirname,csv_name)
 
+            summary_params = {'BAND':1,
+                              'INPUT':self.raster_file_path,
+                              'OUTPUT_TABLE':summary_file }
 
-    def convert_LULC_pixels_to_ESV_valuation(self,
-                                            service,
-                                            aggregation_method,
-                                            output_raster_path):
+            summarize = processing.run("native:rasterlayeruniquevaluesreport", summary_params)
 
-        """Converts the raster of LULC land use class values to a per-pixel ecosystem service
-        valueation based on the input value type and aggragation method using the ESV values from the 
-        ESV csv file.
-        @arg service: Name of the ecosystem service of intereste (from the tool arguments)
-        @arg aggregation_method: Which ESV aggregation will be used (Min/Max/Avg from tool arguments)
-        @arg output_raster_path: path to the output ESV summary raster (from the tool arguments)
+            val = lambda x: int(float(x))
 
-        """
+            with open(summary_file) as csvfile:
+                reader = csv.DictReader(csvfile)
+                data = []
+                for row in reader:
+                    data.append([val(row['value']),
+                                val(row['count']),
+                                val(row['count'])*self.cell_size()])
 
-        """1. Take ESV csv file and transform it into a dictionary with LULC code as the key and the per-pixel
-        ecosystem service valuation as a value. The dictionary reflects values for the ecosystem service and 
-        aggregation method specified. The dictionary is used to map LULC pixel values to the valuation in the 
-        output raster"""
+        return(data)
 
-        ESV_array = self.ESV_to_np_array()
-        col_names = ESV_array.dtype.names
-
-        value_field = self.get_field_name(aggregation_method, col_names)
-        if not service in ESV_array['Service']:
-            raise Exception(f'Selected service {service} is not valid for this LULC dataset type!')
-        filtered_array = ESV_array[ESV_array['Service']==service][['LULC Value',value_field]]
-        cell_size = self.cell_size()
-        ESV_dict = {int(code):self.make_num(value) * cell_size for code, value in filtered_array}
-
-        """2. Use the ESV_dict dictionary to map the LULC values numpy array to a per-pixel valuation
-        numpy array"""
-
-
-        def map_lulc_val(cell_val):
-            """Helper function. Caluclates an LULC value for each individual element in a Numpy array
-            @arg cell_val: Value of the raster cell (array element)
-            @arg ESV_dict: per-pixel ecosystem service value (value) for each LULC type (key)"""
-            ESV_value = ESV_dict.get(cell_val)
-            if ESV_value:
-                return(ESV_value)
-            else:
-                return(None)
-        # Vecorize the mapping function to use on the numpy array
-        vfunc = np.vectorize(map_lulc_val)
-
-        ESV_valued_pixels = vfunc(self.ras_array)
-        import sqlite3
-        ESV_valued_pixels = np.vstack(ESV_valued_pixels[:, :]).astype(np.float)
-
-        driver = gdal.GetDriverByName("GTiff") # will need to ensure raster file passed is a .tiff
-        #dataType = gdal_array.NumericTypeCodeToGDALTypeCode(ESV_valued_pixels.dtype.type) #Figure out data type of output raster from array
-        dataType = gdal.GDT_Float64
-        dsOut = driver.Create(output_raster_path, self.LULC_ds.RasterXSize,  self.LULC_ds.RasterYSize, 1, dataType)
-        gdalnumeric.CopyDatasetInfo(self.LULC_ds, dsOut)
-        bandOut=dsOut.GetRasterBand(1)
-        gdalnumeric.BandWriteArray(bandOut, ESV_valued_pixels)
-
-        # Raster writes when the band and dataset variables are removed
-        bandOut = None
-        dsOut = None
-
-        # Get range of output raster values for map styling
-        self.output_min_val = int(round(np.nanmin(ESV_valued_pixels)))
-        self.output_max_val = int(round(np.nanmax(ESV_valued_pixels)))
 
 class ESV_dataset:
     def __init__(self):
@@ -241,16 +162,13 @@ class ESV_dataset:
                       Pixel Count is the integer count of pixels in the LULC type
                       Area is the total area of that type in the AOI (hectares)
         """
-        # Make sure incoming data is the correct type (i.e. not Numpy data types)
-        cleaned_data = [(d[0].item(),d[1].item(),d[2].item()) for d in data]
-
         self.execute("""DROP TABLE IF EXISTS raster_area_summary;""")
         self.execute("""CREATE TEMPORARY TABLE raster_area_summary(
             lulc_value INTEGER NOT NULL,
             pixel_count INTEGER NOT NULL,
             area REAL NOT NULL
         ); """)
-        self.executemany("""INSERT INTO raster_area_summary(lulc_value,pixel_count,area) VALUES (?,?,?);""", cleaned_data)
+        self.executemany("""INSERT INTO raster_area_summary(lulc_value,pixel_count,area) VALUES (?,?,?);""", data)
 
     def get_LULC_evaluation_data(self, data, source_name):
         """ Final output for step 1. Exports data and column names used to build the
@@ -269,6 +187,7 @@ class ESV_dataset:
 
         query = """ SELECT esv_estimates.lulc_value AS LULC_code,
                            lulc_legend.description LULC_Description,
+                           ROUND(area, 2) AS land_cover_area,
                            service_names.service_name AS Ecosystem_Service_Name,
                            ROUND(estimate_min * area) AS Minimum_Value_Estimate,
                            ROUND(estimate_max * area) AS Maximum_Value_Estimate,
@@ -280,10 +199,7 @@ class ESV_dataset:
 
         result = self.query(query, (source_name,source_name))
 
-        for r in result:
-            print(r)
         column_names = [d[0] for d in self.cursor.description]
-        print(column_names)
         return({'data':result,
                 'column_names':column_names})
 
@@ -309,20 +225,23 @@ class ESV_dataset:
         FROM esv_estimates JOIN service_names ON esv_estimates.service_id = service_names.service_id
         WHERE lulc_source = (?) AND service_name = (?)"""
 
-        result = self.query(query, (source_name, service))
 
+        result = self.query(query, (source_name, service))
         LULC_max = [r[0] for r in result]
         LULC_min = [r-1 for r in LULC_max]
+
         ESV_val = [r[1]*cell_size for r in result]
         reclass_table = [row for sublist in zip(LULC_min, LULC_max, ESV_val) for row in sublist]
 
         return(reclass_table)
+
 
     def get_lulc_sources(self):
         """Returns a list with the LULC sources (e.g. NLCD, NLCMS) available in the dataset"""
         result = self.query("""SELECT DISTINCT source FROM lulc_legend""")
         sources = [r[0] for r in result]
         return(sources)
+    
     
     def get_pixel_options(self, source):
         """Given a LULC source (e.g. NLCD, NLCMS), returns a list of the potential

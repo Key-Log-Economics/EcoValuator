@@ -117,7 +117,6 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             )
         )
 
-        # Add a parameter for the output raster layer
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
@@ -196,6 +195,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                                                        input_esv_stat,
                                                        input_esv_field)
 
+
         # Perform reclassification
         reclassify_params = {'INPUT_RASTER':input_raster,
         'RASTER_BAND':1,
@@ -206,31 +206,37 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         'DATA_TYPE':6,
         'OUTPUT':output_raster_destination}
 
-        processing.run("native:reclassifybytable", reclassify_params)
+        reclassified = processing.run("native:reclassifybytable", reclassify_params)
 
-        # Get min and max values for quintile calculations
+        # Get min and max values for quintile calculations in output raster
 
         output_raster = self.parameterAsRasterLayer(parameters, self.OUTPUT_RASTER, context)
 
+        
+        # Raster data provider allows access to raster statistics for layer
         provider = output_raster.dataProvider()
         stats = provider.bandStatistics(1, QgsRasterBandStats.All)
         output_min_val = stats.minimumValue
         output_max_val = stats.maximumValue
 
+
         #must add raster to iface so that is becomes active layer, then symbolize it in next step
         iface.addRasterLayer(output_raster_destination)
         log("Symbolizing Output")
         
+
         #grabs active layer and data from that layer
         layer = iface.activeLayer()
         provider = layer.dataProvider()
         extent = layer.extent()
+
 
         # Compute quintile ranges for symbolizing output raster
         value_range = list(range(int(output_min_val), int(output_max_val)+1))
         if value_range[0] == 0:
             # Deletes 0 value from value range so as not to skew shading in results
             value_range.pop(0)
+
 
         #we will categorize pixel values into 5 quintiles, based on value_range of raster layer
         #defining min and max values for each quintile. 
@@ -246,8 +252,9 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         fifth_quintile_max = round(np.percentile(value_range, 100), 2)
         fifth_quintile_min = round((fourth_quintile_max + .01), 2)
 
+
         """Takes values for each quintile and builds raster shader with discrete color for each quintile.
-        Unique color ramp chosen for each ESV value. I tried to be intuitive with the colors.
+        Unique color ramp chosen for each ESV value. The colors are meant to be intuitive.
         Lastly, shades output in QGIS."""
 
         color_ramps = {
@@ -352,7 +359,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This algorithm takes as an Input the clipped NLCD raster from Step 1 and an Input ESV Table, which is the output table from Step 1, and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The new raster is then  given a descriptive name and colored according to the ecosystem service chosen. It's values are divided into even quintiles to emphasize breaks in the data. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n Input NLCD raster: This should be the output clipped raster from Step 1, an NLCD layer clipped by a region of interest. \n Input ESV table: This should be the output ESV table from Step 1 and should not be altered. \n Ecosystem service of interest: Specify the ecosystem service you want to map. \n Ecosystem Service Value Level: Choose if you want to map minimum, mean, or maximum values from the ESV table. \n Output esv Raster: Specify an output location for your ESV raster. \n See “Help” for more information on value origins and ecosystem service descriptions.")
+        return self.tr("This algorithm takes the clipped Land Use/Land Cover (LULC) raster and Input ESV table from step 1 and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The new raster is then colored according to the ecosystem service chosen. It's values are divided into even quintiles to emphasize breaks in the data. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n ~~~~~~~~~~~~~~~~ \n Inputs: \n Select land use/land cover data source: Choose either NLCD (National Land Cover Dataset) or NALCMS (North American Land Change Monitoring System). \n Input clipped raster layer: This should be your output from step 1, which is a LULC raster layer clipped to the extent of your study area. \n Choose ecosystem service of interest: Specify the ecosystem service you are interested in. \n Choose ecosystem Service Value Level: Choose to map minimum, mean, or maximum values from the ESV table for your corresponding ESV choice. \n Output esv Raster: Specify an output location for your ESV raster. THIS CANNOT BE BLANK \n See “Help” for more information on value origins and ecosystem service descriptions.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
