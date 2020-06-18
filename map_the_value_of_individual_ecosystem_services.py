@@ -60,8 +60,7 @@ from qgis.core import (QgsProcessing,
                       )
 
 from .appinter import (Raster, App)
-from .eco_valuator_classes import LULC_dataset
-
+from .eco_valuator_classes import LULC_dataset, ESV_dataset
 
 
 class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
@@ -69,17 +68,18 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
     INPUT_RASTER = 'INPUT_RASTER'
-    INPUT_ESV_TABLE = 'INPUT_ESV_TABLE'
     INPUT_ESV_FIELD = 'INPUT_ESV_FIELD'
-    INPUT_ESV_FIELD_OPTIONS = ['aesthetic', 'air quality', 'biodiversity', 'climate regulation', 'cultural, Other', 'erosion control', 'food/nutrition', 'medicinal', 'pollination', 'protection from extreme events', 'raw materials', 'recreation', 'renewable energy', 'soil formation', 'waste assimilation', 'water supply']
     INPUT_ESV_STAT = 'INPUT_ESV_STAT'
-    STATS = ['min', 'avg', 'max']
+    STATS_MAP = {'Minimum':'Min', 'Average':'Avg', 'Maximum':'Max'}
+    STATS = list(STATS_MAP)
     OUTPUT_RASTER = 'OUTPUT_RASTER'
     OUTPUT_RASTER_FILENAME_DEFAULT = 'Output esv raster'
     
     INPUT_LULC_SOURCE = 'INPUT_LULC_SOURCE'
-    LULC_SOURCES = ['NLCD','NALCMS']    #Index 0 for NLCD, Index 1 for NALCMS
 
+    with ESV_dataset() as esv:
+        LULC_SOURCES = esv.get_lulc_sources()
+        INPUT_ESV_FIELD_OPTIONS = esv.get_ecosystem_service_names()
 
     def initAlgorithm(self, config):
         """
@@ -93,18 +93,11 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                 self.LULC_SOURCES
             )
         )
+
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
                 self.tr('Input clipped raster layer')
-            )
-        )
-
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT_ESV_TABLE,
-                self.tr('Input ESV table'),
-                [QgsProcessing.TypeFile]
             )
         )
 
@@ -124,7 +117,6 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
             )
         )
 
-        # Add a parameter for the output raster layer
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
@@ -142,11 +134,11 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         input_lulc_source_index = self.parameterAsEnum(parameters, self.INPUT_LULC_SOURCE, context)
         input_lulc_source = self.LULC_SOURCES[input_lulc_source_index]
         input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        input_nodata_value = 255
         input_esv_field_index = self.parameterAsEnum(parameters, self.INPUT_ESV_FIELD, context)
         input_esv_field = self.INPUT_ESV_FIELD_OPTIONS[input_esv_field_index]
         input_esv_stat_index = self.parameterAsEnum(parameters, self.INPUT_ESV_STAT, context)
-        input_esv_stat = self.STATS[input_esv_stat_index]
+        input_esv_stat_full_name = self.STATS[input_esv_stat_index]
+        input_esv_stat = self.STATS_MAP[input_esv_stat_full_name]
 
         log(f"ESV chosen: {input_esv_field}")
 
@@ -168,143 +160,142 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
                     setattr(parameters['OUTPUT_RASTER'], 'destinationName', f'Average Value - extreme event protection')
 
 
+        input_raster = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         output_raster_destination = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+
         result = {self.OUTPUT_RASTER: output_raster_destination}
-        input_esv_table = self.parameterAsSource(parameters, self.INPUT_ESV_TABLE, context)
 
+        """Check output file format to make sure it is a geotiff"""
 
-        # Check to make sure the input ESV table has at least 4 columns
-        esv_table_length = LULC_dataset.check_esv_table_length(input_esv_table)
-        log(f'{esv_table_length[0]}')
+        output_format = QgsRasterFileWriter.driverForExtension(splitext(output_raster_destination)[1])
+
+        if not output_format or output_format.lower() != "gtiff":
+            error_message = "CRITICAL: Currently only GeoTIFF output format allowed, exiting!"
+            feedback.reportError(error_message)
+            return({'error': error_message})
+        else:
+            message = "Output file is GeoTIFF. Check"
+            log(message)
+
+        #Make instance of LULC dataset from clipped layer here
+        LULC_raster = LULC_dataset(input_lulc_source, input_raster)
         
-        input_esv_table_col_names = esv_table_length[1]
+        # Check to make sure all land use codes are valid 
+        valid = LULC_raster.is_valid()
+        if isinstance(valid, str):
+            #If is instance returns a string it is not valid. The string contains the error message
+            error_message = valid
+            feedback.reportError(error_message)
+            return {'error': error_message}
+
+        # Get reclassify table for selected parameters
+        ESV_data = ESV_dataset()
+        reclass_table = ESV_data.make_reclassify_table(LULC_raster.cell_size(),
+                                                       input_lulc_source,
+                                                       input_esv_stat,
+                                                       input_esv_field)
+
+
+        # Perform reclassification
+        reclassify_params = {'INPUT_RASTER':input_raster,
+        'RASTER_BAND':1,
+        'TABLE':reclass_table,
+        'NO_DATA':-9999,
+        'RANGE_BOUNDARIES':0,
+        'NODATA_FOR_MISSING':True,
+        'DATA_TYPE':6,
+        'OUTPUT':output_raster_destination}
+
+        reclassified = processing.run("native:reclassifybytable", reclassify_params)
+
+        # Get min and max values for quintile calculations in output raster
+
+        output_raster = self.parameterAsRasterLayer(parameters, self.OUTPUT_RASTER, context)
+
         
-        
-        # Check to make sure the input ESV table appears to have columns with ESV stats
-        esv_stats_test = LULC_dataset.check_for_esv_stats(input_esv_table_col_names)
-        log(f'{esv_stats_test}')
+        # Raster data provider allows access to raster statistics for layer
+        provider = output_raster.dataProvider()
+        stats = provider.bandStatistics(1, QgsRasterBandStats.All)
+        output_min_val = stats.minimumValue
+        output_max_val = stats.maximumValue
 
-
-        # Check output format
-        output_format = LULC_dataset.check_output_format(output_raster_destination)
-        log(f'{output_format}')
-
-
-        #check to make sure all land use codes are valid 
-                
-        #fork for NLCD land cover data
-        if input_lulc_source == 'NLCD':
-        
-# TODO:       I don't like the error handling here. Problem stems from LULC_dataset.check_nlcd_codes() function
-            # Check to make sure the input raster is an NALCMS raster, i.e. has the right kinds of pixel values
-
-            nlcd_code_check = LULC_dataset.check_nlcd_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
-            if type(nlcd_code_check[0]) is dict:
-                raster_value_mapping_dict = nlcd_code_check[0]
-                nlcd_codes = nlcd_code_check[1]
-                log('NLCD Codes are all valid. Check')
-            elif type(nlcd_code_check[0]) is str:
-                if len(nlcd_code_check) == 1:
-                    log(f'{nlcd_code_check}')
-                else:
-                    log(f'{nlcd_code_check}')
-
-            # Create a new raster whose pixel values are, instead of being NLCD code values, the per-pixel ecosystem service values corresponding to the NLCD codes
-            log(self.tr("Reading input NLCD raster into numpy array ..."))
-            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
-        
-            # Check to make sure the input raster is an NLCD raster, i.e. has the right kinds of pixel values
-            nlcd_raster_check = LULC_dataset.check_for_nlcd_raster(grid, nlcd_codes, input_nodata_value, raster_value_mapping_dict)
-                    
-            if len(nlcd_raster_check) == 1:
-                log(f'{nlcd_raster_check}')
-            elif len(nlcd_raster_check) == 2:
-                log(f'{nlcd_raster_check[0]}')
-                output_array = nlcd_raster_check[1]
-            log(self.tr("Values mapped. Check"))
-        
-            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
-
-            log(self.tr("Reclassifying missing values with Raster Calculator"))
-        
-            parameters = {'INPUT_A' : output_raster_destination,
-                          'BAND_A' : 1,
-                          'FORMULA' : '(A != 255) * A',
-                          'OUTPUT' : output_raster_destination}
-        
-            processing.run('gdal:rastercalculator', parameters)            
-            
-            
-        #fork for NALCMS land cover data    
-        elif input_lulc_source == 'NALCMS':
-
-            nalcms_code_check = LULC_dataset.check_nalcms_codes(input_esv_field, input_esv_table, input_esv_stat, input_nodata_value)
-                            
-            if type(nalcms_code_check[0]) is dict:
-                raster_value_mapping_dict = nalcms_code_check[0]
-                nalcms_codes = nalcms_code_check[1]
-                log('NALCMS Codes are all valid. Check')
-            elif type(nalcms_code_check[0]) is str:
-                if len(nalcms_code_check) == 1:
-                    log(f'{nalcms_code_check}')
-                else:
-                    log(f'{nalcms_code_check}')
-
-           
-            # Create a new raster whose pixel values are, instead of being NALCMS code values, the per-pixel ecosystem service values corresponding to the NALCMS codes
-            log(self.tr("Reading input NALCMS raster into numpy array ..."))
-            grid = Raster.to_numpy(input_raster, band=1, dtype='int64')
-
-# TODO:       I don't like the error handling here. Problem stems from LULC_dataset.check_nlcd_codes() function
-            # Check to make sure the input raster is an NALCMS raster, i.e. has the right kinds of pixel values
-            nalcms_raster_check = LULC_dataset.check_for_nalcms_raster(grid, nalcms_codes, input_nodata_value, raster_value_mapping_dict)
-                        
-            if len(nalcms_raster_check) == 1:
-                log(f'{nalcms_raster_check}')
-            elif len(nalcms_raster_check) == 2:
-                log(f'{nalcms_raster_check[0]}')
-                output_array = nalcms_raster_check[1]
-            log(self.tr("Values mapped. Check"))
-        
-            Raster.numpy_to_file(output_array, output_raster_destination, src=str(input_raster.source()))
-            
-            #For some reason there are two 'no data' values in the NALCMS data (127 and 255). I need to reclassify them both by running two raster calculator statements
-            log(self.tr("Reclassifying missing values with Raster Calculator"))
-
-            # Reclassifies 127 value (no data value) to 0 using GDAL: Raster Calculator        
-            parameters_127 = {'INPUT_A' : output_raster_destination,
-                          'BAND_A' : 1,
-                          'FORMULA' : '(A != 127) * A',
-                          'OUTPUT' : output_raster_destination}
-        
-            processing.run('gdal:rastercalculator', parameters_127)
-
-            # Reclassifies 255 value (no data value) to 0 using GDAL: Raster Calculator            
-            parameters_255 = {'INPUT_A' : output_raster_destination,
-                          'BAND_A' : 1,
-                          'FORMULA' : '(A != 255) * A',
-                          'OUTPUT' : output_raster_destination}
-
-            processing.run('gdal:rastercalculator', parameters_255)
-        
 
         #must add raster to iface so that is becomes active layer, then symbolize it in next step
         iface.addRasterLayer(output_raster_destination)
         log("Symbolizing Output")
         
-        
-        #grabs active layer and data from that layer to compute range of values in compute_range_of_values() function
+
+        #grabs active layer and data from that layer
         layer = iface.activeLayer()
         provider = layer.dataProvider()
         extent = layer.extent()
-        
-        #Using RasterBandStats to find range of values in raster layer
-        range_of_values = LULC_dataset.compute_range_of_values(layer, provider, extent)
 
-        #Uses range_of_values to color output in QGIS by building raster shader object. Most ESVs have unique colors. 
-        LULC_dataset.create_color_ramp_and_shade_output(layer, input_esv_field, *range_of_values)   # *range_of_values brings in tuple as list of arguments
-                
+
+        # Compute quintile ranges for symbolizing output raster
+        value_range = list(range(int(output_min_val), int(output_max_val)+1))
+        if value_range[0] == 0:
+            # Deletes 0 value from value range so as not to skew shading in results
+            value_range.pop(0)
+
+
+        #we will categorize pixel values into 5 quintiles, based on value_range of raster layer
+        #defining min and max values for each quintile. 
+        #Also, values are rounded to 2 decimal places
+        first_quintile_max = round(np.percentile(value_range, 20), 2)
+        first_quintile_min = round(output_min_val, 2)
+        second_quintile_max = round(np.percentile(value_range, 40), 2)
+        second_quintile_min = round((first_quintile_max + .01), 2)
+        third_quintile_max = round(np.percentile(value_range, 60), 2)
+        third_quintile_min = round((second_quintile_max + .01), 2)
+        fourth_quintile_max = round(np.percentile(value_range, 80), 2)
+        fourth_quintile_min = round((third_quintile_max + .01), 2)
+        fifth_quintile_max = round(np.percentile(value_range, 100), 2)
+        fifth_quintile_min = round((fourth_quintile_max + .01), 2)
+
+
+        """Takes values for each quintile and builds raster shader with discrete color for each quintile.
+        Unique color ramp chosen for each ESV value. The colors are meant to be intuitive.
+        Lastly, shades output in QGIS."""
+
+        color_ramps = {
+                        'green':(QColor(255, 255, 255, .5), QColor(204, 255, 204), QColor(153, 255, 153), QColor(51, 255, 51), QColor(0, 204, 0), QColor(0, 102, 0)),
+                        'light_blue':(QColor(255, 255, 255, .5), QColor(204, 255, 255), QColor(153, 255, 255), QColor(51, 255, 255), QColor(0, 204, 204), QColor(0,102,102)),
+                        'green':(QColor(255, 255, 255, .5), QColor(204, 255, 229), QColor(153, 255, 204), QColor(51, 255, 153), QColor(0, 204, 102), QColor(0, 102, 51)),
+                        'orange':(QColor(255, 255, 255, .5), QColor(255, 229, 204), QColor(255, 204, 153), QColor(255, 153, 51), QColor(204, 102, 0), QColor(102, 51, 0)),
+                        'brown':(QColor(255, 255, 255, .5), QColor(220,187,148), QColor(198,168,134), QColor(169,144,115), QColor(138,117,93), QColor(100,85,67)),
+                        'pink':(QColor(255, 255, 255, .5), QColor(255,204,229), QColor(255,153,204), QColor(255,51,153), QColor(204,0,102), QColor(102,0,51)),
+                        'yellow':(QColor(255, 255, 255, .5), QColor(255,255,204), QColor(255,255,153), QColor(255,255,51), QColor(204,204,0), QColor(102,102,0)),
+                        'gray_black':(QColor(255, 255, 255, .5), QColor(224,224,224), QColor(192,192,192), QColor(128,128,128), QColor(64,64,64), QColor(0,0,0)),
+                        'purple':(QColor(255, 255, 255, .5), QColor(229,204,255), QColor(204,153,255), QColor(153,51,255), QColor(102,0,204), QColor(51,0,102)),
+                        'red':(QColor(255, 255, 255, .5), QColor(255,102,102), QColor(255,51,51), QColor(255,0,0), QColor(204,0,0), QColor(153,0,0)),
+                        'brown':(QColor(255, 255, 255, .5), QColor(220,187,148), QColor(198,168,134), QColor(169,144,115), QColor(138,117,93), QColor(100,85,67)),
+                        'blue_purple':(QColor(255, 255, 255, .5), QColor(204,204,255), QColor(153,153,255), QColor(51,51,255), QColor(0,0,204), QColor(0,0,102)),
+                        'medium_blue':(QColor(255, 255, 255, .5), QColor(204,229,255), QColor(153,204,255), QColor(51,153,205), QColor(0,102,204), QColor(0,51,102))
+                    }
+
+        # map the ecosystem service types to the color ramp options
+        color_ramp_map = {k:v for k,v in zip(self.INPUT_ESV_FIELD_OPTIONS,color_ramps.values())}
+        colors = color_ramp_map[input_esv_field]
+
+        raster_shader = QgsColorRampShader()
+        raster_shader.setColorRampType(QgsColorRampShader.Discrete)           #Shading raster layer with QgsColorRampShader.Discrete
+        colors_list = [QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255, .5), 'No Value'), \
+                    QgsColorRampShader.ColorRampItem(first_quintile_max, colors[0], f"${first_quintile_min}0 - ${first_quintile_max}0"), \
+                    QgsColorRampShader.ColorRampItem(second_quintile_max, colors[1], f"${second_quintile_min} - ${second_quintile_max}0"), \
+                    QgsColorRampShader.ColorRampItem(third_quintile_max, colors[2], f"${third_quintile_min} - ${third_quintile_max}0"), \
+                    QgsColorRampShader.ColorRampItem(fourth_quintile_max, colors[3], f"${fourth_quintile_min} - ${fourth_quintile_max}0"), \
+                    QgsColorRampShader.ColorRampItem(fifth_quintile_max, colors[4], f"${fifth_quintile_min} - ${fifth_quintile_max}0")]       
+
+        raster_shader.setColorRampItemList(colors_list)         #applies colors_list to raster_shader
+        shader = QgsRasterShader()
+        shader.setRasterShaderFunction(raster_shader)       
+
+        renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)    #renders selected raster layer
+        layer.setRenderer(renderer)
+        layer.triggerRepaint()
         
+    
+    
         log(self.tr(f"Adding final raster to map."))
         #need to add result from gdal:rastercalculator to map (doesn't happen automatically)
         
@@ -368,7 +359,7 @@ class MapTheValueOfIndividualEcosystemServices(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This algorithm takes as an Input the clipped NLCD raster from Step 1 and an Input ESV Table, which is the output table from Step 1, and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The new raster is then  given a descriptive name and colored according to the ecosystem service chosen. It's values are divided into even quintiles to emphasize breaks in the data. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n Input NLCD raster: This should be the output clipped raster from Step 1, an NLCD layer clipped by a region of interest. \n Input ESV table: This should be the output ESV table from Step 1 and should not be altered. \n Ecosystem service of interest: Specify the ecosystem service you want to map. \n Ecosystem Service Value Level: Choose if you want to map minimum, mean, or maximum values from the ESV table. \n Output esv Raster: Specify an output location for your ESV raster. \n See “Help” for more information on value origins and ecosystem service descriptions.")
+        return self.tr("This algorithm takes the clipped Land Use/Land Cover (LULC) raster and Input ESV table from step 1 and creates a new raster for which the value is the corresponding per-pixel value (minimum, mean, or maximum) of the user-chosen ecosystem service. The new raster is then colored according to the ecosystem service chosen. It's values are divided into even quintiles to emphasize breaks in the data. The user can repeat this step for additional levels (min, mean, max) and ecosystem services.\n ~~~~~~~~~~~~~~~~ \n Inputs: \n Select land use/land cover data source: Choose either NLCD (National Land Cover Dataset) or NALCMS (North American Land Change Monitoring System). \n Input clipped raster layer: This should be your output from step 1, which is a LULC raster layer clipped to the extent of your study area. \n Choose ecosystem service of interest: Specify the ecosystem service you are interested in. \n Choose ecosystem Service Value Level: Choose to map minimum, mean, or maximum values from the ESV table for your corresponding ESV choice. \n Output esv Raster: Specify an output location for your ESV raster. THIS CANNOT BE BLANK \n See “Help” for more information on value origins and ecosystem service descriptions.")
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

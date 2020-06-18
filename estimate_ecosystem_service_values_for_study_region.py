@@ -33,7 +33,8 @@ import os
 import processing
 
 from PyQt5.QtCore import (QCoreApplication,
-                          QFileInfo
+                          QFileInfo,
+                          QVariant
                           )
 
 from qgis.core import (QgsProcessing,
@@ -53,7 +54,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterDestination
                        )
 
-from .eco_valuator_classes import LULC_dataset
+from .eco_valuator_classes import LULC_dataset, ESV_dataset
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 __esv_data_location__ = os.path.join(__location__, "esv_data")
@@ -70,15 +71,12 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
     HTML_OUTPUT_PATH = 'HTML_OUTPUT_PATH'
     INPUT_ESV = 'INPUT_ESV'
     INPUT_LULC_SOURCE = 'INPUT_LULC_SOURCE'
-    # Getting list of all CSVs in the esv_data directory
-    ESV_CSVS = []
-    for file in os.listdir(__esv_data_location__):
-        if file.endswith(".csv"):
-            ESV_CSVS.append(file)
+
     # The LULC_SOURCES dictionary contains data settings that depend
     #  on the data source such as projection data and ESV validation
     # map unit of 0 = meters
-    LULC_SOURCES = ['NLCD','NALCMS']
+    with ESV_dataset() as esv:
+        LULC_SOURCES = esv.get_lulc_sources()
 
     OUTPUT_RASTER_SUMMARY_TABLE = 'OUTPUT_RASTER_SUMMARY_TABLE'
     OUTPUT_RASTER_SUMMARY_TABLE_FILENAME_DEFAULT = 'Output table of raster unique values'
@@ -121,7 +119,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT_ESV_TABLE,
-                self.tr('Output ESV Table')
+                self.tr('Output ESV table')
             )
         )
 
@@ -166,8 +164,7 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         clipped_raster = QgsRasterLayer(clipped_raster_destination)
 
         #Make instance of LULC dataset from clipped layer here
-        print('making LULC dataset type')
-        LULC_clipped_raster = LULC_dataset(input_lulc_source, clipped_raster, __esv_data_location__ )
+        LULC_clipped_raster = LULC_dataset(input_lulc_source, clipped_raster)
 
         # Check that raster is valid for given data source
         valid = LULC_clipped_raster.is_valid()
@@ -177,15 +174,28 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
             feedback.reportError(error_message)
             return {'error': error_message}
 
-        print('Building output table')
-        
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, LULC_clipped_raster.get_output_QgsFields())
+        with ESV_dataset() as ESV_data:
+            # pass the LULC area summary data from LULC raster object to ESV object
+            LULC_area_summary = LULC_clipped_raster.raster_summary
+            data_for_table = ESV_data.get_LULC_evaluation_data(LULC_area_summary, input_lulc_source)
+
+        # Make output table
+        output_table_QgsFields = QgsFields()
+        for field in data_for_table['column_names']:
+            print(field)
+            output_table_QgsFields.append(QgsField(field, QVariant.String, len=50))
+
+        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT_ESV_TABLE, context, output_table_QgsFields)
 
         result = {self.CLIPPED_RASTER: clipped_raster_destination,
                   self.OUTPUT_ESV_TABLE: dest_id}
 
-        LULC_clipped_raster.create_output_table(sink)
-
+        for record in data_for_table['data']:
+            # convert from tuple to list  for setAttributes method
+            record = list(record)
+            new_feature = QgsFeature(output_table_QgsFields)
+            new_feature.setAttributes(record)
+            sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
 
         # Return the results of the algorithm, which includes the clipped raster
         # and the output esv table
@@ -231,7 +241,9 @@ class EstimateEcosystemServiceValuesForStudyRegion(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("This algorithm does 3 things:\n 1. Clips the Input NLCD raster by the user-supplied Input mask layer for the region of interest.\n 2. Calculates how much area each type of land cover accounts for in the now-clipped NLCD raster.\n 3. Multiplies those areas by each of the associated per-hectare ecosystem service values (ESV) in the Input table of ESV research data.\n Outputs include the clipped raster and a table of aggregate ESV for each land cover type in the study region. \n Once users have added the proper NLCD raster data* and their study region polygon layer* to the QGIS project, they have the following options: \n The input 2016 NLCD raster (https://www.mrlc.gov/national-land-cover-database-nlcd-2016)*: This is a copy of the National Land Cover Database (2016) depicting land cover in 16 types at 30m resolution for the conterminous US.\n Input mask layer: This should be a vector data layer of the user's area of interest or study region. The algorithm clips the NLCD data to this region. \n *Both the NLCD and input mask layer must be in CRS: EPSG: 102003 (https://epsg.io/102003) (USA Contiguous Albers Equal Area Conic) in order to successfully execute the clip to the mask layer. \n Input table of ESV research data: This table of data comes pre-loaded with the plugin and provides the per-hectare-per-year minimum, average, and maximum dollar value estimates for each land cover type and ecosystem service. These figures are also adjusted for the exchange rate and inflation. These figures are derived from an extensive literature review. See Help for details.\n Clipped raster layer: This output is the result of the clipping process that is the first step of the algorithm. \n Place to save intermediate html file: If you'd like to save an html file with the number of pixels and total area (in m^2) for each different pixel value in the input raster. Make sure to specify .html file extension. [This is optional].\n Output ESV table: \n (LEAVE THIS FIELD BLANK) \n This table contains NLCD land cover values and descriptions as rows, and associated ecosystem service values based on the minimum, mean, and maximum values per hectare from the ESV research data. Note that many NULL values will appear in the table due to a lack of existing research on certain ecosystem services in each land cover type, and NULL does not correspond to a dollar value of 0. It simply indicates a current lack of primary studies to determine the dollar amount. (See 'Help' for more information on the methods and sources behind the ESV table.)")
+        return self.tr("This algorithm does several things:\n 1. Clips the input land use/land cover (LULC) raster to the extent of the input mask layer.\n 2. Calculates how much area each type of land cover accounts for in the now-clipped LULC raster layer.\n 3. Multiplies those areas by each of the associated per-hectare ecosystem service values (ESV), which is provided on the back end.\n Outputs: Include the clipped raster layer and a table of aggregate ESV values for each land cover type in the study region.\n ~~~~~~~~~~~~~~~~ \n Inputs:\n Select land use/land cover data source: Choose either NLCD (National Land Cover Dataset) or NALCMS (North American Land Change Monitoring System).\n Input land cover raster: Supply your NLCD or NALCMS raster layer (Info Below)\n Input mask layer: Supply mask layer for your area of interest. This should be a vector polygon.\n Clipped raster layer: This output is the result of the clipping process. You can specify an output location or save to temporary file.\n Output ESV table:\n (LEAVE THIS FIELD BLANK) \nThis table contains land cover vales and descriptions as rows and associated ecosystem service values based on the minimum, mean, and maximum values per hectare from the ESV research data. Not that many NULL values will appear in th etable due to a lack of existing research on certain ecosystem services in each land cover type. NULL does not correspond to a dollar value of 0. It simply indicated a current lack of primary studies to determine the dollar amount.\n ~~~~~~~~~~~~~~~~ \n Note on data sources:\n NLCD data available for download here:\n https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects\n NALCMS data available for download here:\n http://www.cec.org/tools-and-resources/map-files/land-cover-30m-2015-landsat-and-rapideye")
+        
+
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
