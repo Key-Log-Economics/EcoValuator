@@ -94,7 +94,7 @@ class LULC_dataset:
 
             val = lambda x: int(float(x))
 
-            with open(summary_file) as csvfile:
+            with open(summary_file, 'r', encoding = 'ASCII') as csvfile:
                 reader = csv.DictReader(csvfile)
                 data = []
                 for row in reader:
