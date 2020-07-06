@@ -30,7 +30,7 @@ tags=python
 
 homepage=https://github.com/Key-Log-Economics/eco-valuator
 category=Analysis
-icon=icon.png
+icon=keylog.png
 # experimental flag
 experimental=True
 
