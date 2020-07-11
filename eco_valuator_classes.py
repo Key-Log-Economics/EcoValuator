@@ -53,10 +53,10 @@ class LULC_dataset:
         with ESV_dataset() as esv:
             expected_values = esv.get_pixel_options(self.source_name)
 
-        # Find any unexpected raster values
-        raster_vals = [r[0] for r in self.raster_summary]
+        # Find any unexpected raster values (remove zero values)
+        raster_vals = [r[0] for r in self.raster_summary if r[0] != 0]
         difference = set(raster_vals).difference(expected_values)
-        if len(difference) > 0:
+        if difference:
             error_message = f'The following raster values are invalid for the selected LULC source ({self.source_name}): {difference}. Please check that you have selected the correct data source.'
             return(error_message)
         else:
