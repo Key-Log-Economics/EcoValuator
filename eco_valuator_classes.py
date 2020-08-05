@@ -146,10 +146,6 @@ class ESV_dataset:
         self.cursor.execute(sql, params or ())
         return self.fetchall()
 
-    def test_query(self):
-        result = self.query("""SELECT name FROM sqlite_master WHERE type='table';""")
-        return(result)
-
     def create_temp_table_raster_area_summary(self, data):
         """Takes an input of data that summarizes LULC raster values in the AOI and converts into 
         a temporary table in the sqlite database. This allows the values to be summarized and used
