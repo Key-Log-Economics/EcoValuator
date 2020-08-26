@@ -1,4 +1,4 @@
-# Overview
+# Overview #
 
 The QGIS EcoValuator provides a simple means of estimating the dollar value of ecosystem services, such as for recreation, water supply, food, and others.  
 
