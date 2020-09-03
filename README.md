@@ -10,4 +10,4 @@ In the third step (create_print_layout_and_export_as_pdf.py), the EcoValuator cr
 
 # More Information
 
-See the [Key-Log Economics website](http://keylogeconomics.com/ecovaluator) or the plugin's sidebar help for more information.
+See the [Key-Log Economics website](http://keylogeconomics.com/ecovaluator) or the plugin's sidebar help for more information
