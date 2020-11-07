@@ -1,0 +1,40 @@
+source,value,description
+NLCD,11,Open Water
+NLCD,12,Perennial Ice/Snow
+NLCD,21,Developed Open Space
+NLCD,22,Developed Low Intensity
+NLCD,23,Developed Medium Intensity
+NLCD,24,Developed High Intensity
+NLCD,31,Barren Land (Rock/Sand/Clay)
+NLCD,41,Deciduous Forest
+NLCD,42,Evergreen Forest
+NLCD,43,Mixed Forest
+NLCD,51,Dwarf Scrub
+NLCD,52,Shrub/Scrub
+NLCD,71,Grassland/Herbaceous
+NLCD,72,Sedge/Herbaceous
+NLCD,73,Lichens
+NLCD,74,Moss
+NLCD,81,Pasture/Hay
+NLCD,82,Cultivated Crops
+NLCD,90,Woody Wetlands
+NLCD,95,Emergent Herbaceous Wetlands
+NALCMS,1,Temperate or sub-polar needleleaf forest
+NALCMS,2,Sub-polar taiga needleleaf forest
+NALCMS,3,Tropical or sub-tropical broadleaf evergreen forest
+NALCMS,4,Tropical or sub-tropical broadleaf deciduous forest
+NALCMS,5,Temperate or sub-polar broadleaf deciduous forest
+NALCMS,6,Mixed forest
+NALCMS,7,Tropical or sub-tropical shrubland
+NALCMS,8,Temperate or sub-polar shrubland
+NALCMS,9,Tropical or sub-tropical grassland
+NALCMS,10,Temperate or sub-polar grassland
+NALCMS,11,Sub-polar or polar shrubland-lichen-moss
+NALCMS,12,Sub-polar or polar grassland-lichen-moss
+NALCMS,13,Sub-polar or polar barren-lichen-moss
+NALCMS,14,Wetland
+NALCMS,15,Cropland
+NALCMS,16,Barren lands
+NALCMS,17,Urban
+NALCMS,18,Water
+NALCMS,19,Snow and Ice
