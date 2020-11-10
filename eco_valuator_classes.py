@@ -359,16 +359,7 @@ class Symbology:
                        QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(192,192,192), f"${second_quintile_min} - ${second_quintile_max}0"), \
                        QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(128,128,128), f"${third_quintile_min} - ${third_quintile_max}0"), \
                        QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(64,64,64), f"${fourth_quintile_min} - ${fourth_quintile_max}0"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(0,0,0), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]       
- 
-        #gray/black color ramp
-        elif self.input_esv_field == 'Protection from extreme events':
-            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255, .5), 'No Value'), \
-                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(224,224,224), f"${first_quintile_min}0 - ${first_quintile_max}0"), \
-                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(192,192,192), f"${second_quintile_min} - ${second_quintile_max}0"), \
-                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(128,128,128), f"${third_quintile_min} - ${third_quintile_max}0"), \
-                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(64,64,64), f"${fourth_quintile_min} - ${fourth_quintile_max}0"), \
-                       QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(0,0,0), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]       
+                       QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(0,0,0), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]          
 
         #purple color ramp
         elif self.input_esv_field == 'Raw materials':
