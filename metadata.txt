@@ -10,7 +10,7 @@
 name=EcoValuator 3.0
 qgisMinimumVersion=3.0
 description= This plugin calculates ecosystem service values for a given area.
-version=3.0
+version=3.2
 author=Key-Log Economics
 email=anna@keylogeconomics.com
 
