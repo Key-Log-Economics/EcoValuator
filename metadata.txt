@@ -7,7 +7,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=EcoValuator 3.0
+name=EcoValuator 3.2
 qgisMinimumVersion=3.0
 description= This plugin calculates ecosystem service values for a given area.
 version=3.2
