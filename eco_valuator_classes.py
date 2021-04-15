@@ -353,7 +353,7 @@ class Symbology:
                        QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(92,87,2), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]        
 
         #gray/black color ramp
-        elif self.input_esv_field == 'Extreme Events' or self.input_esv_field == 'Protection from extreme events':
+        elif self.input_esv_field in ('Extreme Events', 'Protection from Extreme Events'):
             colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255, .5), 'No Value'), \
                        QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(224,224,224), f"${first_quintile_min}0 - ${first_quintile_max}0"), \
                        QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(192,192,192), f"${second_quintile_min} - ${second_quintile_max}0"), \
@@ -398,7 +398,16 @@ class Symbology:
                        QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(0,0,102), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]
         
         #medium blue color ramp
-        elif self.input_esv_field == 'Water Supply' or self.input_esv_field == 'Air Quality' or self.input_esv_field == 'Air quality':
+        elif self.input_esv_field in ('Water Supply', 'Air Quality','Air quality'):
+            colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255, .5), 'No Value'), \
+                       QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204,229,255), f"${first_quintile_min}0 - ${first_quintile_max}0"), \
+                       QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153,204,255), f"${second_quintile_min} - ${second_quintile_max}0"), \
+                       QgsColorRampShader.ColorRampItem(third_quintile_max, QColor(51,153,205), f"${third_quintile_min} - ${third_quintile_max}0"), \
+                       QgsColorRampShader.ColorRampItem(fourth_quintile_max, QColor(0,102,204), f"${fourth_quintile_min} - ${fourth_quintile_max}0"), \
+                       QgsColorRampShader.ColorRampItem(fifth_quintile_max+1, QColor(0,51,102), f"${fifth_quintile_min} - ${fifth_quintile_max}0")]       
+        
+        else:
+            # Catchall if for some reason the ESV type does match any of the other values
             colors_list = [ QgsColorRampShader.ColorRampItem(0, QColor(255, 255, 255, .5), 'No Value'), \
                        QgsColorRampShader.ColorRampItem(first_quintile_max, QColor(204,229,255), f"${first_quintile_min}0 - ${first_quintile_max}0"), \
                        QgsColorRampShader.ColorRampItem(second_quintile_max, QColor(153,204,255), f"${second_quintile_min} - ${second_quintile_max}0"), \
